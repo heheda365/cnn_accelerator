@@ -4,7 +4,7 @@
     "args": [
         "-g",
         "${file}",
-        "${fileDirname}/conv2d.cpp",
+        // "${fileDirname}/conv2d.cpp",
         "-o",
         "${fileDirname}/${fileBasenameNoExtension}.exe"
     ],

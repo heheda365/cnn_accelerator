@@ -66,6 +66,17 @@ void log_softmax(float in[LEN], float out[LEN]) {
         out[i] = exp(in[i]) / sum_exp;
     }
 }
+template<int CH, int ROW, int COL>
+void view(float in[CH][ROW][COL], float out[CH*ROW*COL]) {
+    int cnt = 0;
+    for(int ch=0; ch < CH; ch ++) {
+        for(int row=0; row < ROW; row ++) {
+            for(int col=0; col < COL; col ++) {
+                out[cnt ++] = in[ch][row][col];
+            }
+        }
+    }
+}
 
 // int main(int argc, char const *argv[])
 // {

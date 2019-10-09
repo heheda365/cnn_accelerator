@@ -10,7 +10,7 @@ int main(int argc, char const *argv[])
     for(int i=0; i<28; i ++) {
         for(int j=0; j < 28; j ++) {
             // std::cout << load.x[cnt++];
-            printf("%3d", (int)(load.x[cnt++] * 255));
+            printf("%4d", (int)(load.x[cnt++] * 255));
         }
         std::cout << endl;
     }

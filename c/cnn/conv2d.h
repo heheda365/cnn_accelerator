@@ -33,7 +33,7 @@ void padding(float in[IN_CH][IN_ROW][IN_COL], float out[IN_CH][IN_ROW + 2*P][IN_
  * 
  */
 template<int IN_CH, int IN_ROW, int IN_COL, int OUT_CH, int OUT_ROW, int OUT_COL, int K, int S, int B>
-void conv2d_nop(float in[IN_CH][IN_ROW][IN_COL], float out[OUT_CH][OUT_ROW][OUT_COL], float w[OUT_CH][IN_CH][K][K]) {
+void conv2d_nop(float in[IN_CH][IN_ROW][IN_COL], float out[OUT_CH][OUT_ROW][OUT_COL], const float w[OUT_CH][IN_CH][K][K], const float b[OUT_CH]) {
     // IN ROW
     for(int in_row=0; in_row < IN_ROW - K + 1; in_row += S) {
         // IN COL
@@ -53,22 +53,31 @@ void conv2d_nop(float in[IN_CH][IN_ROW][IN_COL], float out[OUT_CH][OUT_ROW][OUT_
             }
         }
     }
+    if(B != 0) {
+        for(int ch = 0; ch < OUT_CH; ch ++) {
+            for(int row = 0; row < OUT_ROW; row ++) {
+                for(int col = 0; col < OUT_COL; col ++) {
+                    out[ch][row][col] += b[ch];
+                }
+            }
+        }
+    }
 }
 
 template<int IN_CH, int IN_ROW, int IN_COL, int OUT_CH, int OUT_ROW, int OUT_COL, int K, int S, int P, int B>
-void conv2d(float in[IN_CH][IN_ROW][IN_COL], float out[OUT_CH][OUT_ROW][OUT_COL], float w[OUT_CH][IN_CH][K][K]){
+void conv2d(float in[IN_CH][IN_ROW][IN_COL], float out[OUT_CH][OUT_ROW][OUT_COL], const float w[OUT_CH][IN_CH][K][K], const float b[OUT_CH]){
     // if(P != 0) {
     float out_padding[IN_CH][IN_ROW + 2*P][IN_COL + 2*P];
     padding<IN_CH, IN_ROW, IN_COL, P>(in, out_padding);
-    conv2d_nop<IN_CH, IN_ROW, IN_COL, OUT_CH, OUT_ROW, OUT_COL, K, S, B>(out_padding, out, w);
+    conv2d_nop<IN_CH, IN_ROW + 2*P, IN_COL + 2*P, OUT_CH, OUT_ROW, OUT_COL, K, S, B>(out_padding, out, w, b);
 }
 
 
 
-template<int A>
-int add(int a, int b) {
-    return a + b + A;
-}
+// template<int A>
+// int add(int a, int b) {
+//     return a + b + A;
+// }
 
 // int main(int argc, char const *argv[])
 // {

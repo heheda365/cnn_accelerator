@@ -1,11 +1,11 @@
 #pragma once
 
 template<int IN_N, int OUT_N>
-void linear(float in[IN_N], float out[OUT_N], float w[IN_N][OUT_N], float b[OUT_N]){
+void linear(float in[IN_N], float out[OUT_N], const float w[OUT_N][IN_N], const float b[OUT_N]){
     for(int i=0; i < OUT_N; i ++) {
         out[i] = 0;
         for(int j=0; j < IN_N; j ++) {
-            out[i] += in[j] * w[j][i];
+            out[i] += in[j] * w[i][j];
         }
         out[i] += b[i];
     }

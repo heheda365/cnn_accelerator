@@ -25,40 +25,6 @@ void load_params() {
     load_data("params/linear_1_b.bin", (char *) linear_1_b, sizeof(linear_1_b));
 }
 
-// int main(int argc, char const *argv[])
-// {
-//     float in[1][8][8];
-//     for(int i = 0; i < 8; i ++) {
-//         for(int j = 0; j < 8; j ++) {
-//             in[0][i][j] = 1;
-//         }
-//     }
-                        
-//     float out[2][8][8] = {0};
-//     float w[2][1][3][3] = {{
-//                     {{1, 1, 1}, 
-//                     {1, 1, 1},
-//                     {1, 1, 1}}, 
-//                     },
-//                     {
-//                     {{1, 1, 1}, 
-//                     {1, 1, 1},
-//                     {1, 1, 1}}, 
-//                     }
-                    
-//                     };
-//     float b[1] = {1};
-//     conv2d<1, 8, 8, 2, 8, 8, 3, 1, 1, 1>(in, out, w, b);
-
-//     for(int i = 0; i < 8; i ++) {
-//         for(int j = 0; j < 8; j ++) {
-//             std::cout << out[0][i][j] << " ";
-//         }
-//         std::cout << std::endl;
-//     }
-//     return 0;
-// }
-
 int main(int argc, char const *argv[])
 {
     
@@ -86,12 +52,6 @@ int main(int argc, char const *argv[])
                 conv_0_w,
                 conv_0_b
             );
-    // for(int i = 0; i < 28; i ++ ) {
-    //     for(int j = 0; j < 28; j ++) {
-    //         std::cout << out0[0][i][j] << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
     conv_relu<COV_0_OUT_CH, COV_0_OUT_ROW, COV_0_OUT_COL>(out0, out0);
 
     float out1[COV_1_OUT_CH][COV_1_OUT_ROW][COV_1_OUT_COL] = {0};
@@ -149,18 +109,9 @@ int main(int argc, char const *argv[])
     linear<LINEAR_0_IN_N, LINEAR_0_OUT_N>(linear_in, linear_0_out, linear_0_w, linear_0_b);
     linear_relu<LINEAR_0_OUT_N>(linear_0_out, linear_0_out);
 
-    std::cout << std::endl << "linear_0_out = " << std::endl;
-    for(int i=0; i < LINEAR_0_OUT_N; i ++) {
-        std::cout << linear_0_out[i] << "  ";
-    }
-
     float linear_1_out[LINEAR_1_OUT_N] = {0};
     linear<LINEAR_1_IN_N, LINEAR_1_OUT_N>(linear_0_out, linear_1_out, linear_1_w, linear_1_b);
 
-    std::cout << std::endl << "linear_1_out = " << std::endl;
-    for(int i=0; i < LINEAR_1_OUT_N; i ++) {
-        std::cout << linear_1_out[i] << "  ";
-    }
     float res[LINEAR_1_OUT_N] = {0};
     log_softmax<LINEAR_1_OUT_N>(linear_1_out, res);
 
@@ -168,6 +119,16 @@ int main(int argc, char const *argv[])
     for(int i=0; i < LINEAR_1_OUT_N; i ++) {
         std::cout << res[i] << "  ";
     }
+
+    int res_num = 0;
+    float max = res[0];
+    for(int i=0; i < LINEAR_1_OUT_N; i ++) {
+        if(max < res[i]) {
+            max = res[i];
+            res_num = i;
+        }
+    }
+    std::cout << std::endl << "the numble is " << res_num << std::endl;
 
     return 0;
 }

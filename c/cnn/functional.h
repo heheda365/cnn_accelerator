@@ -63,7 +63,7 @@ void log_softmax(float in[LEN], float out[LEN]) {
         sum_exp += exp(in[i]);
     }
     for(int i=0; i < LEN; i ++) {
-        out[i] = exp(in[i]) / sum_exp;
+        out[i] = log(exp(in[i]) / sum_exp);
     }
 }
 template<int CH, int ROW, int COL>

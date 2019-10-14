@@ -1,5 +1,6 @@
 
 #pragma once
+#include <iostream>
 
 template<int IN_CH, int IN_ROW, int IN_COL, int P>
 void padding(float in[IN_CH][IN_ROW][IN_COL], float out[IN_CH][IN_ROW + 2*P][IN_COL+2*P]) {
@@ -13,8 +14,8 @@ void padding(float in[IN_CH][IN_ROW][IN_COL], float out[IN_CH][IN_ROW + 2*P][IN_
             for(int col = 0; col < P; col ++) {
                 out[ch][row][col] = 0;
             }
-            for(int col=0; col < IN_COL; col ++) {
-                out[ch][row][col + P] = in[ch][row][col];
+            for(int col=P; col < IN_COL + P; col ++) {
+                out[ch][row][col] = in[ch][row-P][col-P];
             }
             for(int col=IN_COL + P; col < IN_COL + 2*P; col ++) {
                 out[ch][row][col] = 0;
@@ -69,6 +70,12 @@ void conv2d(float in[IN_CH][IN_ROW][IN_COL], float out[OUT_CH][OUT_ROW][OUT_COL]
     // if(P != 0) {
     float out_padding[IN_CH][IN_ROW + 2*P][IN_COL + 2*P];
     padding<IN_CH, IN_ROW, IN_COL, P>(in, out_padding);
+    // for(int i=0; i < IN_ROW + 2*P; i ++) {
+    //     for(int j=0; j < IN_COL + 2*P; j ++) {
+    //         std::cout << out_padding[0][i][j] << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
     conv2d_nop<IN_CH, IN_ROW + 2*P, IN_COL + 2*P, OUT_CH, OUT_ROW, OUT_COL, K, S, B>(out_padding, out, w, b);
 }
 

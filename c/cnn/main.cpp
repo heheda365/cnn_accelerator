@@ -1,35 +1,75 @@
 #include <iostream>
+#include <fstream>
 #include "conv2d.h"
 #include "linear.h"
 #include "functional.h"
-#include "params.h"
 #include "config.h"
+#include "params.h"
 #include "loader.h"
+
+void load_data(const char * path, char * ptr, unsigned int size) {
+    std::ifstream f(path, std::ios::in | std::ios::binary);
+    f.read(ptr, size);
+    f.close();
+}
+void load_params() {
+    load_data("params/conv_0_w.bin", (char *) conv_0_w, sizeof(conv_0_w));
+    load_data("params/conv_0_b.bin", (char *) conv_0_b, sizeof(conv_0_b));
+    load_data("params/conv_1_w.bin", (char *) conv_1_w, sizeof(conv_1_w));
+    load_data("params/conv_1_b.bin", (char *) conv_1_b, sizeof(conv_1_b));
+    load_data("params/conv_2_w.bin", (char *) conv_2_w, sizeof(conv_2_w));
+    load_data("params/conv_2_b.bin", (char *) conv_2_b, sizeof(conv_2_b));
+    load_data("params/linear_0_w.bin", (char *) linear_0_w, sizeof(linear_0_w));
+    load_data("params/linear_0_b.bin", (char *) linear_0_b, sizeof(linear_0_b));
+    load_data("params/linear_1_w.bin", (char *) linear_1_w, sizeof(linear_1_w));
+    load_data("params/linear_1_b.bin", (char *) linear_1_b, sizeof(linear_1_b));
+}
+
+// int main(int argc, char const *argv[])
+// {
+//     float in[1][8][8];
+//     for(int i = 0; i < 8; i ++) {
+//         for(int j = 0; j < 8; j ++) {
+//             in[0][i][j] = 1;
+//         }
+//     }
+                        
+//     float out[2][8][8] = {0};
+//     float w[2][1][3][3] = {{
+//                     {{1, 1, 1}, 
+//                     {1, 1, 1},
+//                     {1, 1, 1}}, 
+//                     },
+//                     {
+//                     {{1, 1, 1}, 
+//                     {1, 1, 1},
+//                     {1, 1, 1}}, 
+//                     }
+                    
+//                     };
+//     float b[1] = {1};
+//     conv2d<1, 8, 8, 2, 8, 8, 3, 1, 1, 1>(in, out, w, b);
+
+//     for(int i = 0; i < 8; i ++) {
+//         for(int j = 0; j < 8; j ++) {
+//             std::cout << out[0][i][j] << " ";
+//         }
+//         std::cout << std::endl;
+//     }
+//     return 0;
+// }
 
 int main(int argc, char const *argv[])
 {
-    std::cout << "hello world";
-    loader load = loader();
-
-    load.load_libsvm_data("../load_dataset/MNIST/mnist.t", 1, 784, 10);
-	load.x_normalize(0, 'r');
-    int cnt = 0;
+    
+    load_params();
+    std::cout << "load params finish \n";
+    
     float in0[1][28][28];
-    for(int i=0; i<28; i ++) {
-        for(int j=0; j < 28; j ++) {
-            // std::cout << load.x[cnt++];
-            in0[0][i][j] = load.x[cnt];
-            printf("%4d", (int)(load.x[cnt] * 255));
-            cnt ++;
-        }
-        std::cout << endl;
-    }
-    for(int i=0; i<10; i ++) {
-        std::cout << (int)load.y[i];
-    }
-     
+    load_data("data/test_data.bin", (char *) in0, sizeof(in0));
+    std::cout << "load test data finish \n";
     // 神经网络
-    float out0[COV_0_OUT_CH][COV_0_OUT_ROW][COV_0_OUT_COL];
+    float out0[COV_0_OUT_CH][COV_0_OUT_ROW][COV_0_OUT_COL] = {0};
     conv2d<
             COV_0_IN_CH, 
             COV_0_IN_ROW,
@@ -46,9 +86,15 @@ int main(int argc, char const *argv[])
                 conv_0_w,
                 conv_0_b
             );
+    // for(int i = 0; i < 28; i ++ ) {
+    //     for(int j = 0; j < 28; j ++) {
+    //         std::cout << out0[0][i][j] << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
     conv_relu<COV_0_OUT_CH, COV_0_OUT_ROW, COV_0_OUT_COL>(out0, out0);
 
-    float out1[COV_1_OUT_CH][COV_1_OUT_ROW][COV_1_OUT_COL];
+    float out1[COV_1_OUT_CH][COV_1_OUT_ROW][COV_1_OUT_COL] = {0};
     conv2d<
             COV_1_IN_CH, 
             COV_1_IN_ROW,
@@ -77,7 +123,7 @@ int main(int argc, char const *argv[])
                     pool_0_out
                 );
     
-    float out2[COV_2_OUT_CH][COV_2_OUT_ROW][COV_2_OUT_COL];
+    float out2[COV_2_OUT_CH][COV_2_OUT_ROW][COV_2_OUT_COL] = {0};
     conv2d<
             COV_2_IN_CH, 
             COV_2_IN_ROW,
@@ -96,19 +142,29 @@ int main(int argc, char const *argv[])
             );
     conv_relu<COV_2_OUT_CH, COV_2_OUT_ROW, COV_2_OUT_COL>(out2, out2);
 
-    float linear_in[LINEAR_0_IN_N];
+    float linear_in[LINEAR_0_IN_N] = {0};
     view<COV_2_OUT_CH, COV_2_OUT_ROW, COV_2_OUT_COL>(out2, linear_in);
 
-    float linear_0_out[LINEAR_0_OUT_N];
+    float linear_0_out[LINEAR_0_OUT_N] = {0};
     linear<LINEAR_0_IN_N, LINEAR_0_OUT_N>(linear_in, linear_0_out, linear_0_w, linear_0_b);
+    linear_relu<LINEAR_0_OUT_N>(linear_0_out, linear_0_out);
 
-    float linear_1_out[LINEAR_1_OUT_N];
+    std::cout << std::endl << "linear_0_out = " << std::endl;
+    for(int i=0; i < LINEAR_0_OUT_N; i ++) {
+        std::cout << linear_0_out[i] << "  ";
+    }
+
+    float linear_1_out[LINEAR_1_OUT_N] = {0};
     linear<LINEAR_1_IN_N, LINEAR_1_OUT_N>(linear_0_out, linear_1_out, linear_1_w, linear_1_b);
 
-    float res[LINEAR_1_OUT_N];
-    softmax<LINEAR_1_OUT_N>(linear_1_out, res);
+    std::cout << std::endl << "linear_1_out = " << std::endl;
+    for(int i=0; i < LINEAR_1_OUT_N; i ++) {
+        std::cout << linear_1_out[i] << "  ";
+    }
+    float res[LINEAR_1_OUT_N] = {0};
+    log_softmax<LINEAR_1_OUT_N>(linear_1_out, res);
 
-    std::cout << "res = " << std::endl;
+    std::cout << std::endl << "res = " << std::endl;
     for(int i=0; i < LINEAR_1_OUT_N; i ++) {
         std::cout << res[i] << "  ";
     }

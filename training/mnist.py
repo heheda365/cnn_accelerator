@@ -49,10 +49,11 @@ test_loader = torch.utils.data.DataLoader(
 # In[6]:
 
 
-model = model.ConvNet().to(DEVICE)
+# model = model.ConvNet().to(DEVICE)
 # model = model.ShiftConvNet().to(DEVICE)
 # model = model.DWConvNet().to(DEVICE)
 # model = model.QuantShiftConvNet().to(DEVICE)
+model = model.MiniConvNet().to(DEVICE)
 optimizer = optim.Adam(model.parameters())
 
 

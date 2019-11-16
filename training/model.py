@@ -158,6 +158,45 @@ class QuantShiftConvNet(nn.Module):
         out = F.log_softmax(out,dim=1)
         return out
 
+class MiniConvNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.features = nn.Sequential(
+            nn.Conv2d(1,32,3,padding=(1, 1)),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(32,32,3,padding=(1, 1)),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            # nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(32,32,3,padding=(1, 1)),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(32,32,3,padding=(1, 1)),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(32*7*7,20),
+            nn.BatchNorm1d(20),
+            nn.ReLU(inplace=True),
+            nn.Linear(20,10)
+        )
+    def forward(self,x):
+        in_size = x.size(0)
+        out = self.features(x)
+        out = out.view(in_size,-1)
+        out = self.classifier(out)
+        out = F.log_softmax(out, dim=1)
+        return out       
+
 if __name__ == "__main__":
 
     import torchvision

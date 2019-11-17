@@ -5,10 +5,14 @@
 #include "functional.h"
 #include "config.h"
 #include "params.h"
-#include "loader.h"
+// #include "loader.h"
 
 void load_data(const char * path, char * ptr, unsigned int size) {
     std::ifstream f(path, std::ios::in | std::ios::binary);
+    if(!f) {
+        std::cout <<"no such file,please check the file name!/n";
+        exit(0);
+    }
     f.read(ptr, size);
     f.close();
 }
@@ -34,6 +38,14 @@ void load_params() {
     load_data("params/linear_0_bn_bias.bin", (char *) bn_4_b, sizeof(bn_4_b));
 
 }
+/**
+ * mnist conv net
+ * ??
+ */
+int mnist_conv_net(int in[1][28][28]) {
+
+    return 
+}
 
 int main(int argc, char const *argv[])
 {
@@ -50,7 +62,7 @@ int main(int argc, char const *argv[])
 
 
     
-    int32_t in0[1][28][28];
+    float in0[1][28][28];
     load_data("data/test_data.bin", (char *) in0, sizeof(in0));
     std::cout << "load test data finish \n";
 
@@ -71,6 +83,10 @@ int main(int argc, char const *argv[])
     }
     // 神绝网络
     int out0[COV_0_OUT_CH][COV_0_OUT_ROW][COV_0_OUT_COL] = {0};
+
+    for(int i=0; i < 10; i ++) {
+        std::cout << out0[0][0][i] << " ";
+    }
     conv2d<
             COV_0_IN_CH, 
             COV_0_IN_ROW,
@@ -85,14 +101,13 @@ int main(int argc, char const *argv[])
                 in0_int,
                 out0,
                 conv_0_w,
-                (int32_t *) NULL
+                (int *) NULL
             );
 
     std::cout << std::endl << "out0 = " << std::endl;
     for(int i=0; i < COV_0_OUT_ROW; i ++) {
         for(int j=0; j < COV_0_OUT_COL; j ++) {
             std::cout << out0[0][i][j] << "  ";
-
         }
         std::cout << "\n";
     }
@@ -100,19 +115,27 @@ int main(int argc, char const *argv[])
             COV_0_OUT_CH,
             COV_0_OUT_ROW,
             COV_0_OUT_COL,
-            COV_0_IN_BIT> (
+            COV_0_IN_BIT,
+            COV_0_A_BIT> (
                 out0,
                 out0,
                 bn_0_w,
                 bn_0_b
             );
+
     std::cout << std::endl << "bn_0_b = " << std::endl;
     for(int i=0; i < COV_0_OUT_CH; i ++) {
         std::cout << bn_0_b[i] << " ";     
     }
     std::cout << "\n";
 
-    std::cout << std::endl << "bn0 = " << std::endl;
+    std::cout << std::endl << "bn_0_w = " << std::endl;
+    for(int i=0; i < COV_0_OUT_CH; i ++) {
+        std::cout << bn_0_w[i] << " ";     
+    }
+    std::cout << "\n";
+
+    std::cout << std::endl << "conv_bn_qrelu = " << std::endl;
     for(int i=0; i < COV_0_OUT_ROW; i ++) {
         for(int j=0; j < COV_0_OUT_COL; j ++) {
             std::cout << out0[0][i][j] << "  ";
@@ -121,7 +144,7 @@ int main(int argc, char const *argv[])
         std::cout << "\n";
     }
 
-    conv_relu<COV_0_OUT_CH, COV_0_OUT_ROW, COV_0_OUT_COL, COV_0_IN_BIT>(out0, out0);
+    // conv_relu<COV_0_OUT_CH, COV_0_OUT_ROW, COV_0_OUT_COL, COV_0_IN_BIT>(out0, out0);
 
     std::cout << std::endl << "out0_relu = " << std::endl;
     for(int i=0; i < COV_0_OUT_ROW; i ++) {
@@ -164,7 +187,7 @@ int main(int argc, char const *argv[])
                 pool0_out,
                 out1,
                 conv_1_w,
-                (int32_t *) NULL
+                (int *) NULL
             );
 
     std::cout << std::endl << "out1 = " << std::endl;
@@ -176,11 +199,12 @@ int main(int argc, char const *argv[])
         std::cout << "\n";
     }
     
-    conv_bn<
+    conv_bn_qrelu<
             COV_1_OUT_CH,
             COV_1_OUT_ROW,
             COV_1_OUT_COL,
-            COV_1_IN_BIT> (
+            COV_1_IN_BIT,
+            COV_1_A_BIT> (
                 out1,
                 out1,
                 bn_1_w,
@@ -194,7 +218,7 @@ int main(int argc, char const *argv[])
         }
         std::cout << "\n";
     }
-    conv_relu<COV_1_OUT_CH, COV_1_OUT_ROW, COV_1_OUT_COL, COV_1_IN_BIT>(out1, out1);
+    // conv_relu<COV_1_OUT_CH, COV_1_OUT_ROW, COV_1_OUT_COL, COV_1_IN_BIT>(out1, out1);
     
     int out2[COV_2_OUT_CH][COV_2_OUT_ROW][COV_2_OUT_COL] = {0};
     conv2d<
@@ -211,19 +235,20 @@ int main(int argc, char const *argv[])
                 out1,
                 out2,
                 conv_2_w,
-                (int32_t *) NULL
+                (int *) NULL
             );
-    conv_bn<
+    conv_bn_qrelu<
             COV_2_OUT_CH,
             COV_2_OUT_ROW,
             COV_2_OUT_COL,
-            COV_2_IN_BIT> (
+            COV_2_IN_BIT,
+            COV_2_A_BIT> (
                 out2,
                 out2,
                 bn_2_w,
                 bn_2_b
             );
-    conv_relu<COV_2_OUT_CH, COV_2_OUT_ROW, COV_2_OUT_COL, COV_2_IN_BIT>(out2, out2);
+    // conv_relu<COV_2_OUT_CH, COV_2_OUT_ROW, COV_2_OUT_COL, COV_2_IN_BIT>(out2, out2);
     int pool2_out[POOL_1_IN_CH][POOL_1_IN_ROW/POOL_1_IN_PO][POOL_1_IN_COL/POOL_1_IN_PO] = {0};
     max_pool2d<
                 POOL_1_IN_CH, 
@@ -249,19 +274,20 @@ int main(int argc, char const *argv[])
                 pool2_out,
                 out3,
                 conv_3_w,
-                (int32_t *) NULL
+                (int *) NULL
             );
-    conv_bn<
+    conv_bn_qrelu<
             COV_3_OUT_CH,
             COV_3_OUT_ROW,
             COV_3_OUT_COL,
-            COV_3_IN_BIT> (
+            COV_3_IN_BIT,
+            COV_3_A_BIT> (
                 out3,
                 out3,
                 bn_3_w,
                 bn_3_b
             );
-    conv_relu<COV_3_OUT_CH, COV_3_OUT_ROW, COV_3_OUT_COL, COV_3_IN_BIT>(out3, out3);
+    // conv_relu<COV_3_OUT_CH, COV_3_OUT_ROW, COV_3_OUT_COL, COV_3_IN_BIT>(out3, out3);
 
     std::cout << std::endl << "out3 = " << std::endl;
     for(int i=0; i < COV_3_OUT_ROW; i ++) {
@@ -278,9 +304,9 @@ int main(int argc, char const *argv[])
 
 
     int linear_0_out[LINEAR_0_OUT_N] = {0};
-    linear<LINEAR_0_IN_N, LINEAR_0_OUT_N>(linear_in, linear_0_out, linear_0_w, (int32_t *) NULL);
-    linear_bn<LINEAR_0_OUT_N>(linear_0_out, linear_0_out, bn_4_w, bn_4_b);
-    linear_relu<LINEAR_0_OUT_N>(linear_0_out, linear_0_out);
+    linear<LINEAR_0_IN_N, LINEAR_0_OUT_N>(linear_in, linear_0_out, linear_0_w, (int *) NULL);
+    linear_bn_qrelu<LINEAR_0_OUT_N, LINEAR_0_IN_BIT, LINEAR_0_A_BIT>(linear_0_out, linear_0_out, bn_4_w, bn_4_b);
+    // linear_relu<LINEAR_0_OUT_N>(linear_0_out, linear_0_out);
 
     std::cout << std::endl << "linear0_relu = " << std::endl;
     for(int i=0; i < LINEAR_0_OUT_N; i ++) {
@@ -289,14 +315,14 @@ int main(int argc, char const *argv[])
 
 
     int linear_1_out[LINEAR_1_OUT_N] = {0};
-    linear<LINEAR_1_IN_N, LINEAR_1_OUT_N>(linear_0_out, linear_1_out, linear_1_w, (int32_t *) NULL);
+    linear<LINEAR_1_IN_N, LINEAR_1_OUT_N>(linear_0_out, linear_1_out, linear_1_w, (int *) NULL);
 
     std::cout << std::endl << "linear_1_out = " << std::endl;
     for(int i=0; i < LINEAR_1_OUT_N; i ++) {
         std::cout << linear_1_out[i] << "  ";
     }
 
-    int32_t res[LINEAR_1_OUT_N] = {0};
+    float res[LINEAR_1_OUT_N] = {0};
     log_softmax<LINEAR_1_OUT_N>(linear_1_out, res);
 
     std::cout << std::endl << "res = " << std::endl;
@@ -305,7 +331,7 @@ int main(int argc, char const *argv[])
     }
 
     int res_num = 0;
-    int32_t max = res[0];
+    float max = res[0];
     for(int i=0; i < LINEAR_1_OUT_N; i ++) {
         if(max < res[i]) {
             max = res[i];

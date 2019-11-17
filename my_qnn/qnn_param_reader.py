@@ -72,7 +72,13 @@ if __name__ == "__main__":
     # 卷积层和中间的 bn层
     for i in range(4):
         con_w = qnn_read.read_qconv_weight(w_bit=2)
-        qinc, qbias = qnn_read.read_qbarch_norm_act_param(w_bit=2, in_bit=4, out_bit=4, l_shift=4)
+        if i == 0:
+            in_bit = 8
+            print(con_w)
+        else:
+            in_bit = 4
+        qinc, qbias = qnn_read.read_qbarch_norm_act_param(w_bit=2, in_bit=in_bit, out_bit=4, l_shift=0)
+
 
         con_w.tofile(target_dir_int_param + 'conv_' + str(i) + '_w.bin')
         qinc.tofile(target_dir_int_param + 'conv_' + str(i) + '_bn_inc.bin')
@@ -80,7 +86,7 @@ if __name__ == "__main__":
     
     # 全连接层
     linear_w0 = qnn_read.read_qlinear_weight(w_bit=2)
-    linear_bn0_inc, linear_bn0_bias = qnn_read.read_qbarch_norm_act_param(w_bit=2, in_bit=4, out_bit=4, l_shift=4)
+    linear_bn0_inc, linear_bn0_bias = qnn_read.read_qbarch_norm_act_param(w_bit=2, in_bit=4, out_bit=4, l_shift=0)
 
     linear_w0.tofile(target_dir_int_param + 'linear_0_w' + '.bin')
     linear_bn0_inc.tofile(target_dir_int_param + 'linear_0_bn_inc' + '.bin')
@@ -88,6 +94,7 @@ if __name__ == "__main__":
 
     linear_w1 = qnn_read.read_qlinear_weight(w_bit=2)
     linear_w1.tofile(target_dir_int_param + 'linear_1_w' + '.bin')
+    print('generate parameter succeed')
 
     
 

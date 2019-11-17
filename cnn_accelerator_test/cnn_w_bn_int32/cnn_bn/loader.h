@@ -32,8 +32,8 @@ using namespace std;
 
 class loader {
 public:
-	int32_t* x;
-	int32_t* y;
+	float* x;
+	float* y;
 
 	char x_normalizedToMinus1_1;
 
@@ -73,8 +73,8 @@ void loader::load_libsvm_data(const char* pathToFile, uint32_t _numSamples, uint
 	numSamples = _numSamples;
 	numFeatures = _numFeatures;
 	numClasses = _numClasses;
-	x = (int32_t*)calloc(numSamples*numFeatures, sizeof(int32_t)); 
-	y = (int32_t*)calloc(numSamples*numClasses, sizeof(int32_t));
+	x = (float*)calloc(numSamples*numFeatures, sizeof(float)); 
+	y = (float*)calloc(numSamples*numClasses, sizeof(float));
 
 	string line;
 	ifstream f(pathToFile);
@@ -124,16 +124,16 @@ void loader::x_normalize(char toMinus1_1, char rowOrColumnWise) {
 	x_normalizedToMinus1_1 = toMinus1_1;
 	if (rowOrColumnWise == 'r') {
 		for (uint32_t i = 0; i < numSamples; i++) {
-			int32_t _min = numeric_limits<int32_t>::max();
-			int32_t _max = numeric_limits<int32_t>::min();
+			float _min = numeric_limits<float>::max();
+			float _max = numeric_limits<float>::min();
 			for (uint32_t j = 1; j < numFeatures; j++) { // Don't normalize bias
-				int32_t x_here = x[i*numFeatures + j];
+				float x_here = x[i*numFeatures + j];
 				if (x_here > _max)
 					_max = x_here;
 				if (x_here < _min)
 					_min = x_here;
 			}
-			int32_t _range = _max - _min;
+			float _range = _max - _min;
 			if (_range > 0) {
 				if (toMinus1_1 == 1) {
 					for (uint32_t j = 1; j < numFeatures; j++) { // Don't normalize bias
@@ -150,16 +150,16 @@ void loader::x_normalize(char toMinus1_1, char rowOrColumnWise) {
 	}
 	else {
 		for (uint32_t j = 1; j < numFeatures; j++) { // Don't normalize bias
-			int32_t _min = numeric_limits<int32_t>::max();
-			int32_t _max = numeric_limits<int32_t>::min();
+			float _min = numeric_limits<float>::max();
+			float _max = numeric_limits<float>::min();
 			for (uint32_t i = 0; i < numSamples; i++) {
-				int32_t x_here = x[i*numFeatures + j];
+				float x_here = x[i*numFeatures + j];
 				if (x_here > _max)
 					_max = x_here;
 				if (x_here < _min)
 					_min = x_here;
 			}
-			int32_t _range = _max - _min;
+			float _range = _max - _min;
 			if (_range > 0) {
 				if (toMinus1_1 == 1) {
 					for (uint32_t i = 0; i < numSamples; i++) {

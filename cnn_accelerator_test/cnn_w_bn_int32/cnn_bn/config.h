@@ -67,6 +67,9 @@
 #define LINEAR_0_IN_N 1568
 #define LINEAR_0_OUT_N 20
 
+#define LINEAR_0_IN_BIT 4
+#define LINEAR_0_A_BIT 4
+
 #define LINEAR_1_IN_N 20
 #define LINEAR_1_OUT_N 10
 

@@ -36,7 +36,7 @@ void max_pool2d(int in[IN_CH][IN_ROW][IN_COL], int out[IN_CH][IN_ROW / PO][IN_CO
     for(int row=0; row <= IN_ROW - PO; row += PO) {
         for(int col=0; col <= IN_COL - PO; col += PO) {
             for(int ch=0; ch < IN_CH; ch ++) {
-                int32_t max =in[ch][row][col]; 
+                int max =in[ch][row][col]; 
                 for(int pi=0; pi < PO; pi ++) {
                     for(int pj=0; pj < PO; pj ++) {
                         if(in[ch][row + pi][col + pj] > max){
@@ -50,8 +50,8 @@ void max_pool2d(int in[IN_CH][IN_ROW][IN_COL], int out[IN_CH][IN_ROW / PO][IN_CO
     }
 }
 template<int LEN>
-void softmax(int32_t in[LEN], int32_t out[LEN]) {
-    int32_t sum = 0;
+void softmax(int in[LEN], int out[LEN]) {
+    int sum = 0;
     for(int i=0; i < LEN; i ++) {
         sum += in[i];
     }
@@ -61,8 +61,8 @@ void softmax(int32_t in[LEN], int32_t out[LEN]) {
 }
 
 template<int LEN>
-void log_softmax(int in[LEN], int32_t out[LEN]) {
-    int32_t sum_exp = 0;
+void log_softmax(int in[LEN], float out[LEN]) {
+    int sum_exp = 0;
     for(int i=0; i < LEN; i ++) {
         sum_exp += exp(in[i] * 1.0 / 3 / 15);
     }
@@ -82,7 +82,7 @@ void view(int in[CH][ROW][COL], int out[CH*ROW*COL]) {
     }
 }
 template<int CH, int ROW, int COL, int IN_BIT>
-void conv_bn(int in[CH][ROW][COL], int out[CH][ROW][COL], int32_t w[CH], int32_t b[CH]) {
+void conv_bn(int in[CH][ROW][COL], int out[CH][ROW][COL], int w[CH], int b[CH]) {
     for(int ch=0; ch < CH; ch ++) {
         for(int row=0; row < ROW; row ++) {
             for(int col=0; col < COL; col ++) {
@@ -92,7 +92,7 @@ void conv_bn(int in[CH][ROW][COL], int out[CH][ROW][COL], int32_t w[CH], int32_t
     }
 }
 template<int LEN>
-void linear_bn(int in[LEN], int out[LEN], int32_t w[LEN], int32_t b[LEN]) {
+void linear_bn(int in[LEN], int out[LEN], int w[LEN], int b[LEN]) {
     for(int i=0; i < LEN; i ++) {
         out[i] = (int)(in[i] * w[i] + b[i] * 3 * 15);
     }
@@ -100,7 +100,7 @@ void linear_bn(int in[LEN], int out[LEN], int32_t w[LEN], int32_t b[LEN]) {
 
 template<int BIT>
 int qrelu_search(int target, int inc, int bias) {
-    target = target - bias;
+    target = target + bias;
     int index = 1 << (BIT - 1);
     int mid = inc << (BIT - 1);
     for(int i=BIT-2; i >= 0; i --) {
@@ -121,20 +121,27 @@ int qrelu_search(int target, int inc, int bias) {
 }
 
 template<int IN_CH, int IN_ROW, int IN_COL, int IN_BIT, int OUT_BIT>
-void conv_bn_qrelu(int in[IN_CH][IN_ROW][IN_COL], int out[IN_CH][IN_ROW][IN_COL], int32_t w[IN_CH], int32_t b[IN_CH]) {
-    int inc = ((int)(3/w)) << 4 ;
-    int bias = ((int)(b/w)) << 4;
+void conv_bn_qrelu(int in[IN_CH][IN_ROW][IN_COL], int out[IN_CH][IN_ROW][IN_COL], int w[IN_CH], int b[IN_CH]) {
+    
     for(int ch=0; ch < IN_CH; ch ++) {
         for(int row=0; row < IN_ROW; row ++) {
             for(int col=0; col < IN_COL; col ++) {
-                out[ch][row][col] = qrelu_search<OUT_BIT>(in[ch][row][col], inc, bias);
+                out[ch][row][col] = qrelu_search<OUT_BIT>(in[ch][row][col], w[ch], b[ch]);
             }
         }
     }
 }
+
+template<int LEN, int IN_BIT, int OUT_BIT>
+void linear_bn_qrelu(int in[LEN], int out[LEN], int w[LEN], int b[LEN]) {
+    for(int i=0; i < LEN; i ++) {
+       
+        out[i] = qrelu_search<OUT_BIT>(in[i], w[i], b[i]);
+    }
+}
 // int main(int argc, char const *argv[])
 // {
-//     int32_t in[2][4][4] = {{{1, 2, 1, 3},
+//     int in[2][4][4] = {{{1, 2, 1, 3},
 //                         {1, 1, 1, 4},
 //                         {2, 3, 4, 5},
 //                         {2, 3, 4, 5}},
@@ -144,7 +151,7 @@ void conv_bn_qrelu(int in[IN_CH][IN_ROW][IN_COL], int out[IN_CH][IN_ROW][IN_COL]
 //                         {2, 3, 4, 5},
 //                         {2, 3, 4, 5}}
 //                         };
-//     int32_t out[2][2][2] = {0};
+//     int out[2][2][2] = {0};
 
 //     max_pool2d<2, 4, 4, 2>(in, out);
     

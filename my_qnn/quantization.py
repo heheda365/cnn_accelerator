@@ -49,7 +49,7 @@ def bn_act_quantize_int(gamma, beta, mean, var, eps, w_bit=2, in_bit=4, out_bit=
     inc_f = 1 / w
     bias_f = b / w
     inc = inc_f * (2 ** (w_bit - 1) - 1) * (2 ** in_bit - 1) * (2 ** l_shift) / (2 ** out_bit - 1)
-    bias = bias_f * (2 ** (w_bit - 1) - 1) * (2 ** in_bit - 1) * (2 ** l_shift) / (2 ** out_bit - 1)
+    bias = bias_f * (2 ** (w_bit - 1) - 1) * (2 ** in_bit - 1) * (2 ** l_shift) + inc / 2
     inc_q = (inc + 0.5).astype(np.int32)
     bias_q = (bias + 0.5).astype(np.int32)
     return inc_q, bias_q

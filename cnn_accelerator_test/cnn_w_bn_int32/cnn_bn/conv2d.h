@@ -34,7 +34,7 @@ void padding(int in[IN_CH][IN_ROW][IN_COL], int out[IN_CH][IN_ROW + 2*P][IN_COL+
  * 
  */
 template<int IN_CH, int IN_ROW, int IN_COL, int OUT_CH, int OUT_ROW, int OUT_COL, int K, int S, int B>
-void conv2d_nop(int in[IN_CH][IN_ROW][IN_COL], int out[OUT_CH][OUT_ROW][OUT_COL], const int32_t w[OUT_CH][IN_CH][K][K], const int32_t b[OUT_CH]) {
+void conv2d_nop(int in[IN_CH][IN_ROW][IN_COL], int out[OUT_CH][OUT_ROW][OUT_COL], const int w[OUT_CH][IN_CH][K][K], const int b[OUT_CH]) {
     // IN ROW
     for(int in_row=0; in_row < IN_ROW - K + 1; in_row += S) {
         // IN COL
@@ -47,9 +47,7 @@ void conv2d_nop(int in[IN_CH][IN_ROW][IN_COL], int out[OUT_CH][OUT_ROW][OUT_COL]
                     for(int k_col=0; k_col < K; k_col ++) {
                         // IN CH  K IN CH
                         for(int in_ch=0; in_ch < IN_CH; in_ch ++){
-                            out[out_ch][in_row][in_col] += ((in[in_ch][in_row + k_row][in_col + k_col] << 1) * w[out_ch][in_ch][k_row][k_col]
-                                                            - (in[in_ch][in_row + k_row][in_col + k_col] << 2) + in[in_ch][in_row + k_row][in_col + k_col]
-                                                            ); 
+                            out[out_ch][in_row][in_col] += in[in_ch][in_row + k_row][in_col + k_col] * w[out_ch][in_ch][k_row][k_col]; 
                         }
                     }
                 }
@@ -68,7 +66,7 @@ void conv2d_nop(int in[IN_CH][IN_ROW][IN_COL], int out[OUT_CH][OUT_ROW][OUT_COL]
 }
 
 template<int IN_CH, int IN_ROW, int IN_COL, int OUT_CH, int OUT_ROW, int OUT_COL, int K, int S, int P, int B>
-void conv2d(int in[IN_CH][IN_ROW][IN_COL], int out[OUT_CH][OUT_ROW][OUT_COL], const int32_t w[OUT_CH][IN_CH][K][K], const int32_t b[OUT_CH]){
+void conv2d(int in[IN_CH][IN_ROW][IN_COL], int out[OUT_CH][OUT_ROW][OUT_COL], const int w[OUT_CH][IN_CH][K][K], const int b[OUT_CH]){
     // if(P != 0) {
     int out_padding[IN_CH][IN_ROW + 2*P][IN_COL + 2*P];
     padding<IN_CH, IN_ROW, IN_COL, P>(in, out_padding);
@@ -103,7 +101,7 @@ void conv2d(int in[IN_CH][IN_ROW][IN_COL], int out[OUT_CH][OUT_ROW][OUT_COL], co
                         
 //                         };
 //     int out[1][2][2] = {0};
-//     int32_t[1][2][3][3] = {{
+//     int[1][2][3][3] = {{
 //                     {{1, 1, 1}, 
 //                     {1, 1, 1},
 //                     {1, 1, 1}},

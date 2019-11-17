@@ -74,20 +74,20 @@ if __name__ == "__main__":
         con_w = qnn_read.read_qconv_weight(w_bit=2)
         qinc, qbias = qnn_read.read_qbarch_norm_act_param(w_bit=2, in_bit=4, out_bit=4, l_shift=4)
 
-        con_w.tofile(target_dir_int_param + 'conv_w_' + str(i) + '.bin')
-        qinc.tofile(target_dir_int_param + 'conv_bn_inc_' + str(i) + '.bin')
-        qbias.tofile(target_dir_int_param + 'conv_bn_bias_' + str(i) + '.bin')
+        con_w.tofile(target_dir_int_param + 'conv_' + str(i) + '_w.bin')
+        qinc.tofile(target_dir_int_param + 'conv_' + str(i) + '_bn_inc.bin')
+        qbias.tofile(target_dir_int_param + 'conv_' + str(i) + '_bn_bias.bin')
     
     # 全连接层
     linear_w0 = qnn_read.read_qlinear_weight(w_bit=2)
     linear_bn0_inc, linear_bn0_bias = qnn_read.read_qbarch_norm_act_param(w_bit=2, in_bit=4, out_bit=4, l_shift=4)
 
-    linear_w0.tofile(target_dir_int_param + 'linear_w_0' + '.bin')
-    linear_bn0_inc.tofile(target_dir_int_param + 'linear_bn_inc_0' + '.bin')
-    linear_bn0_bias.tofile(target_dir_int_param + 'linear_bn_bias_0' + '.bin')
+    linear_w0.tofile(target_dir_int_param + 'linear_0_w' + '.bin')
+    linear_bn0_inc.tofile(target_dir_int_param + 'linear_0_bn_inc' + '.bin')
+    linear_bn0_bias.tofile(target_dir_int_param + 'linear_0_bn_bias' + '.bin')
 
     linear_w1 = qnn_read.read_qlinear_weight(w_bit=2)
-    linear_w1.tofile(target_dir_int_param + 'linear_w_1' + '.bin')
+    linear_w1.tofile(target_dir_int_param + 'linear_1_w' + '.bin')
 
     
 

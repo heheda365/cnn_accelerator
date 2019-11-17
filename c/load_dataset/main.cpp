@@ -5,12 +5,12 @@ int main(int argc, char const *argv[])
     loader load = loader();
 
     load.load_libsvm_data("MNIST/mnist.t", 1, 784, 10);
-	load.x_normalize(0, 'r');
+	// load.x_normalize(0, 'r');
     int cnt = 0;
     for(int i=0; i<28; i ++) {
         for(int j=0; j < 28; j ++) {
             // std::cout << load.x[cnt++];
-            printf("%4d", (int)(load.x[cnt++] * 255));
+            printf("%4d", (int)(load.x[cnt++]));
         }
         std::cout << endl;
     }

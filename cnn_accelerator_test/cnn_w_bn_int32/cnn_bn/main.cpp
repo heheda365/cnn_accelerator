@@ -5,7 +5,7 @@
 #include "functional.h"
 #include "config.h"
 #include "params.h"
-// #include "loader.h"
+#include "loader.h"
 
 void load_data(const char * path, char * ptr, unsigned int size) {
     std::ifstream f(path, std::ios::in | std::ios::binary);
@@ -40,53 +40,12 @@ void load_params() {
 }
 /**
  * mnist conv net
- * ??
+ * ???????? ????
  */
 int mnist_conv_net(int in[1][28][28]) {
-
-    return 
-}
-
-int main(int argc, char const *argv[])
-{
-    std::cout << "load params start \n";
-    load_params();
-    std::cout << "load params finish \n";
-
-    for(int i = 0; i < 3; i ++) {
-        for(int j=0; j < 3; j ++) {
-            std::cout << (int)conv_0_w[0][0][i][j] << "  ";
-        }
-        std::cout << std::endl;
-    }
-
-
-    
-    float in0[1][28][28];
-    load_data("data/test_data.bin", (char *) in0, sizeof(in0));
-    std::cout << "load test data finish \n";
-
-    int in0_int[1][28][28];
-    for(int i=0; i < 28; i ++) {
-        for(int j=0; j < 28; j ++) {
-            in0_int[0][i][j] = (int) (in0[0][i][j] * 255);
-        }
-    }
-
-    std::cout << std::endl << "in0 = " << std::endl;
-    for(int i=0; i < 28; i ++) {
-        for(int j=0; j < 28; j ++) {
-            std::cout << in0_int[0][i][j] << "  ";
-
-        }
-        std::cout << "\n";
-    }
-    // 神绝网络
     int out0[COV_0_OUT_CH][COV_0_OUT_ROW][COV_0_OUT_COL] = {0};
-
-    for(int i=0; i < 10; i ++) {
-        std::cout << out0[0][0][i] << " ";
-    }
+    
+    // conv 0 
     conv2d<
             COV_0_IN_CH, 
             COV_0_IN_ROW,
@@ -98,19 +57,12 @@ int main(int argc, char const *argv[])
             COV_0_S,
             COV_0_P,
             COV_0_B>(
-                in0_int,
+                in,
                 out0,
                 conv_0_w,
                 (int *) NULL
             );
 
-    std::cout << std::endl << "out0 = " << std::endl;
-    for(int i=0; i < COV_0_OUT_ROW; i ++) {
-        for(int j=0; j < COV_0_OUT_COL; j ++) {
-            std::cout << out0[0][i][j] << "  ";
-        }
-        std::cout << "\n";
-    }
     conv_bn_qrelu<
             COV_0_OUT_CH,
             COV_0_OUT_ROW,
@@ -122,39 +74,6 @@ int main(int argc, char const *argv[])
                 bn_0_w,
                 bn_0_b
             );
-
-    std::cout << std::endl << "bn_0_b = " << std::endl;
-    for(int i=0; i < COV_0_OUT_CH; i ++) {
-        std::cout << bn_0_b[i] << " ";     
-    }
-    std::cout << "\n";
-
-    std::cout << std::endl << "bn_0_w = " << std::endl;
-    for(int i=0; i < COV_0_OUT_CH; i ++) {
-        std::cout << bn_0_w[i] << " ";     
-    }
-    std::cout << "\n";
-
-    std::cout << std::endl << "conv_bn_qrelu = " << std::endl;
-    for(int i=0; i < COV_0_OUT_ROW; i ++) {
-        for(int j=0; j < COV_0_OUT_COL; j ++) {
-            std::cout << out0[0][i][j] << "  ";
-
-        }
-        std::cout << "\n";
-    }
-
-    // conv_relu<COV_0_OUT_CH, COV_0_OUT_ROW, COV_0_OUT_COL, COV_0_IN_BIT>(out0, out0);
-
-    std::cout << std::endl << "out0_relu = " << std::endl;
-    for(int i=0; i < COV_0_OUT_ROW; i ++) {
-        for(int j=0; j < COV_0_OUT_COL; j ++) {
-            std::cout << out0[0][i][j] << "  ";
-
-        }
-        std::cout << "\n";
-    }
-
     int pool0_out[POOL_0_IN_CH][POOL_0_IN_ROW/POOL_0_IN_PO][POOL_0_IN_COL/POOL_0_IN_PO] = {0};
     max_pool2d< 
             POOL_0_IN_CH,
@@ -163,15 +82,6 @@ int main(int argc, char const *argv[])
             POOL_0_IN_PO
             > (out0, pool0_out);
     
-    std::cout << std::endl << "pool0 = " << std::endl;
-    for(int i=0; i < POOL_0_IN_ROW/POOL_0_IN_PO; i ++) {
-        for(int j=0; j < POOL_0_IN_COL/POOL_0_IN_PO; j ++) {
-            std::cout << pool0_out[0][i][j] << "  ";
-
-        }
-        std::cout << "\n";
-    }
-
     int out1[COV_1_OUT_CH][COV_1_OUT_ROW][COV_1_OUT_COL] = {0};
     conv2d<
             COV_1_IN_CH, 
@@ -190,15 +100,6 @@ int main(int argc, char const *argv[])
                 (int *) NULL
             );
 
-    std::cout << std::endl << "out1 = " << std::endl;
-    for(int i=0; i < COV_1_OUT_ROW; i ++) {
-        for(int j=0; j < COV_1_OUT_ROW; j ++) {
-            std::cout << out1[0][i][j] << "  ";
-
-        }
-        std::cout << "\n";
-    }
-    
     conv_bn_qrelu<
             COV_1_OUT_CH,
             COV_1_OUT_ROW,
@@ -210,15 +111,6 @@ int main(int argc, char const *argv[])
                 bn_1_w,
                 bn_1_b
             );
-    std::cout << std::endl << "out1_bn = " << std::endl;
-    for(int i=0; i < COV_1_OUT_ROW; i ++) {
-        for(int j=0; j < COV_1_OUT_ROW; j ++) {
-            std::cout << out1[0][i][j] << "  ";
-
-        }
-        std::cout << "\n";
-    }
-    // conv_relu<COV_1_OUT_CH, COV_1_OUT_ROW, COV_1_OUT_COL, COV_1_IN_BIT>(out1, out1);
     
     int out2[COV_2_OUT_CH][COV_2_OUT_ROW][COV_2_OUT_COL] = {0};
     conv2d<
@@ -248,7 +140,6 @@ int main(int argc, char const *argv[])
                 bn_2_w,
                 bn_2_b
             );
-    // conv_relu<COV_2_OUT_CH, COV_2_OUT_ROW, COV_2_OUT_COL, COV_2_IN_BIT>(out2, out2);
     int pool2_out[POOL_1_IN_CH][POOL_1_IN_ROW/POOL_1_IN_PO][POOL_1_IN_COL/POOL_1_IN_PO] = {0};
     max_pool2d<
                 POOL_1_IN_CH, 
@@ -287,48 +178,20 @@ int main(int argc, char const *argv[])
                 bn_3_w,
                 bn_3_b
             );
-    // conv_relu<COV_3_OUT_CH, COV_3_OUT_ROW, COV_3_OUT_COL, COV_3_IN_BIT>(out3, out3);
-
-    std::cout << std::endl << "out3 = " << std::endl;
-    for(int i=0; i < COV_3_OUT_ROW; i ++) {
-        for(int j=0; j < COV_3_OUT_ROW; j ++) {
-            std::cout << out3[0][i][j] << "  ";
-
-        }
-        std::cout << "\n";
-    }
-
     int linear_in[LINEAR_0_IN_N] = {0};
     view<COV_3_OUT_CH, COV_3_OUT_ROW, COV_3_OUT_COL>(out3, linear_in);
-
-
 
     int linear_0_out[LINEAR_0_OUT_N] = {0};
     linear<LINEAR_0_IN_N, LINEAR_0_OUT_N>(linear_in, linear_0_out, linear_0_w, (int *) NULL);
     linear_bn_qrelu<LINEAR_0_OUT_N, LINEAR_0_IN_BIT, LINEAR_0_A_BIT>(linear_0_out, linear_0_out, bn_4_w, bn_4_b);
-    // linear_relu<LINEAR_0_OUT_N>(linear_0_out, linear_0_out);
-
-    std::cout << std::endl << "linear0_relu = " << std::endl;
-    for(int i=0; i < LINEAR_0_OUT_N; i ++) {
-        std::cout << linear_0_out[i] << "  ";
-    }
-
 
     int linear_1_out[LINEAR_1_OUT_N] = {0};
     linear<LINEAR_1_IN_N, LINEAR_1_OUT_N>(linear_0_out, linear_1_out, linear_1_w, (int *) NULL);
 
-    std::cout << std::endl << "linear_1_out = " << std::endl;
-    for(int i=0; i < LINEAR_1_OUT_N; i ++) {
-        std::cout << linear_1_out[i] << "  ";
-    }
 
     float res[LINEAR_1_OUT_N] = {0};
     log_softmax<LINEAR_1_OUT_N>(linear_1_out, res);
 
-    std::cout << std::endl << "res = " << std::endl;
-    for(int i=0; i < LINEAR_1_OUT_N; i ++) {
-        std::cout << res[i] << "  ";
-    }
 
     int res_num = 0;
     float max = res[0];
@@ -338,7 +201,52 @@ int main(int argc, char const *argv[])
             res_num = i;
         }
     }
-    std::cout << std::endl << "the numble is " << res_num << std::endl;
+    return res_num;
+}
+
+int main(int argc, char const *argv[])
+{
+    std::cout << "load params start \n";
+    load_params();
+    std::cout << "load params finish \n";
+
+
+    loader load = loader();
+    load.load_libsvm_data("../../../c/load_dataset/MNIST/mnist.t", 10000, 784, 10);
+    std::cout << "load test data finish \n";
+
+    int (* in)[1][28][28] = new int[10000][1][28][28];
+    int * y = new int[10000];
+    int cnt_x = 0;
+
+    for(int i=0; i<10000; i ++) {
+        for(int row=0; row < 28; row ++) {
+            for(int col=0; col < 28; col ++) {
+                in[i][0][row][col] = load.x[cnt_x ++];
+            }
+        }
+    }
+    int cnt_y = 0;
+    for(int i=0; i < 10000; i ++) {
+        int temp_y = 0;
+        for(int j=0; j < 10; j ++) {
+            if(load.y[cnt_y ++] > 0.5) {
+                temp_y = j;
+            }
+        }
+        y[i] = temp_y;
+    }
+    std::cout << "data preproccess finish\n";
+
+    int accu = 0;
+    for(int i=0; i < 10000; i ++) {
+        int predict_num = mnist_conv_net(in[i]);
+        if(predict_num == y[i]) {
+            accu ++;
+        }
+        std::cout << "count : " << i << "  accuracy : " << accu << "\n";
+    }
+    std::cout << std::endl << "the accuracy is " << accu << std::endl;
 
     return 0;
 }

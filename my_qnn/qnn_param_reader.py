@@ -4,7 +4,7 @@ import quantization
 
 # 读出参数
 # 然后根据量化规则将其处理量化为指定位宽
-# 
+# 使用int32类型储存
 class QNNParamReader:
     def __init__(self, paramFile):
         self.param_dict = np.load(paramFile)

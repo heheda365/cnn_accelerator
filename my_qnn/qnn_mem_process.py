@@ -60,6 +60,7 @@ class QNNMemProcess:
         self.param_process = ParamProcess(param_file_name)
 
     # 将矩阵整理成所需要的储存样式
+    # 转化位 pe * titles 矩阵
     def w_to_hls_array(self, w, w_bit, simd, pe):
         assert w.shape[0] % pe == 0, 'out_ch mod pe must 0'
         # w 矩阵的宽 其值 为 k * k * in_ch
@@ -94,7 +95,12 @@ class QNNMemProcess:
                 tiles_cnt += 1  
         return res
 
-    # def inc_bias_to_hls_array(self, )
+    # 处理 inc 和 bias
+    def inc_bias_to_hls_array(self, inc, bias, pe):
+        inc = inc.reshape(pe, -1)
+        bias = bias.reshape(pe, -1)
+        
+        return inc, bias
     
     # 卷积参数整理
     # 返回的w因为元素可能大于64位 所以用list储存
@@ -106,6 +112,8 @@ class QNNMemProcess:
         # 先把 w 处理为每个元素位宽都是 simd * w_bit 形式
         w = self.w_to_hls_array(w, w_bit, simd, pe)
 
+        inc, bias = self.inc_bias_to_hls_array(inc, bias, pe)
+
         return w, inc, bias
 
 
@@ -113,20 +121,21 @@ class QNNMemProcess:
     def linear(self, w_bit, in_bit, out_bit, l_shift, pe, simd):
         w, inc, bias = self.param_process.linear_process(w_bit, in_bit, out_bit, l_shift)
         w = self.w_to_hls_array(w, w_bit, simd, pe)
+        inc, bias = self.inc_bias_to_hls_array(inc, bias, pe)
 
         return w, inc, bias
     
 
     # 最后一个全连接层
-    def last_linear(self, w_bit, pe, simd) -> str:
+    def last_linear(self, w_bit, pe, simd):
         w = self.param_process.last_linear_process(w_bit)
         w = self.w_to_hls_array(w, w_bit, simd, pe)
         return w
     
-    def w_to_hls_init_str(self, name, w, w_bit, simd, pe):
-        res = ''
+    def w_to_hls_init_str(self, name, w, w_bit, pe, simd) -> str:
         w_mem_type = "ap_uint<"+str(w_bit * simd)+">"
 
+        res = '// ' + name + '\n'
         res += "//PEs = %d, SIMD width = %d\n" % (pe, simd)
         res += '//w_bit = %d\n' % w_bit
         res += w_mem_type
@@ -137,6 +146,60 @@ class QNNMemProcess:
         res += '};\n'
 
         return res
+    
+
+    # 确定 inc 位宽 
+    # 实验中发现inc 都为正数
+    def get_inc_bit_width(self, inc):
+        max_num = inc.max()
+        bit_width = len(str(bin(max_num))) - 2
+        return bit_width
+    
+    # 确定bias的位宽
+    # bias 有整数和负数
+    # 当前算法得出的还不是最优
+    def get_bias_bit_width(self, bias):
+        abs_max = np.abs(bias).max()
+        bit_width = len(str(bin(abs_max))) - 2
+        return bit_width + 1
+    
+    def inc_to_hls_init_str(self, name, inc, pe, simd) -> str:
+        inc_bit_width = self.get_inc_bit_width(inc)
+
+        w_mem_type = "ap_uint<"+str(inc_bit_width)+">"
+
+        res = '// inc\n'
+        res += '// ' + name + '\n'
+        res += '//w_bit = %d\n' % inc_bit_width
+        res += w_mem_type
+        res += (' ' + name) 
+        res += '[%d][%d] = {\n' % (len(inc), len(inc[0]))
+
+        res += ",\n".join(map(lambda pe:"{"+(", ".join(map(hex, pe)))+"}", inc))
+        res += '};\n'
+
+        return res  
+    
+    def bias_to_hls_init_str(self, name, bias, pe, simd) -> str:
+        bias_bit_width = self.get_bias_bit_width(bias)
+
+        w_mem_type = "ap_int<"+str(bias_bit_width)+">"
+        res = '// bias\n'
+        res += '// ' + name + '\n'
+        res += '//w_bit = %d\n' % bias_bit_width
+        res += w_mem_type
+        res += (' ' + name) 
+        res += '[%d][%d] = {\n' % (len(bias), len(bias[0]))
+
+        res += ",\n".join(map(lambda pe:"{"+(", ".join(map(hex, pe)))+"}", bias))
+        res += '};\n'
+
+        return res
+
+
+    
+    
+
 
         
 
@@ -150,11 +213,33 @@ if __name__ == "__main__":
     qnn_men_pro = QNNMemProcess('miniConvNet.npz')
     
     w, inc, bias = qnn_men_pro.conv(2, 8, 4, l_shift=0, pe=4, simd=9)
-    # param_process = ParamProcess('miniConvNet.npz')
-    # w, inc, bias = param_process.conv_process(2, 8, 4, 0)
-    w_str = qnn_men_pro.w_to_hls_init_str('conv_0_w', w, 2, 9, 4)
-    print(np.array(w))
-    print(w_str)
+    w_str = qnn_men_pro.w_to_hls_init_str('conv_0_w', w, 2, 8, 9)
+    inc_str = qnn_men_pro.inc_to_hls_init_str('conv_inc_0', inc, 8, 9)
+    bias_str = qnn_men_pro.bias_to_hls_init_str('conv_bias_0', bias, 8, 9)
+
+    print(w_str + inc_str + bias_str)
+
+    # print(inc)
+
+    # w, inc, bias = qnn_men_pro.conv(2, 4, 4, l_shift=0, pe=4, simd=32)
+    # print(inc)
+    # w, inc, bias = qnn_men_pro.conv(2, 4, 4, l_shift=0, pe=4, simd=32)
+    # print(inc)
+
+    # w, inc, bias = qnn_men_pro.conv(2, 4, 4, l_shift=0, pe=4, simd=32)
+    # print(inc)
+
+    # w, inc, bias = qnn_men_pro.linear(2, 4, 4, l_shift=0, pe=4, simd=32)
+    # print(inc)
+    # w_str = qnn_men_pro.w_to_hls_init_str('conv_0_w', w, 2, 4, 9)
+    # print(np.array(w))
+    # print(inc)
+    # print(bias)
+    # print(w_str)
+
+    # a = -2
+    # print(bin(a))
+    # print(len(str(bin(a))))
 
     
 

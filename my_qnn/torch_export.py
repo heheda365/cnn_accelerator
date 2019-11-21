@@ -52,7 +52,7 @@ def generate_config(model, in_shape):
             linear_cur['in_len'] = sub_module.in_features
             linear_cur['out_len'] = sub_module.out_features
 
-            dic['linear' + str(linear_cnt)] = linear_cur
+            dic['linear_' + str(linear_cnt)] = linear_cur
             linear_cnt = linear_cnt + 1
             # cnt = cnt + 1
     

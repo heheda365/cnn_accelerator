@@ -21,125 +21,162 @@ def array_to_string(array, elem_bit):
             val = val + tmp3
         return val
 
-
+# 处理一层的参数
 #  处理得到 转化后的w矩阵和 bn的inc，bias
 # w矩阵为二维矩阵，row为输出通道数
 # 相对于原始w张量，其内存排列顺序转换为 out_ch, row, col, in_ch
-class ParamProcess:
-    def __init__(self, file_name):
-        self.qnn_read = QNNParamReader(file_name)
+# class ParamProcess:
+#     def __init__(self, w, inc, bias, w_bit, in_bit, out_bit, l_shift):
+#         # self.qnn_read = QNNParamReader(file_name)
+#         self.w = w
+#         self.inc = inc
+#         self.bias = bias
+#         self.w_bit = w_bit
+#         self.in_bit = in_bit
+#         self.out_bit = out_bit
+#         self.l_shift = l_shift
 
-    def conv_process(self, w_bit, in_bit, out_bit, l_shift):
-        con_w = self.qnn_read.read_qconv_weight(w_bit)
-        # con_w 是一个4维张量
-        # 将输入通道维度放到最后
-        con_w.transpose(0, 2, 3, 1)
-        # 处理为二维矩阵
-        con_w = con_w.reshape(con_w.shape[0], -1)
+#     def conv_process(self):
+#         # con_w 是一个4维张量
+#         # 将输入通道维度放到最后
+#         con_w = self.w
+#         con_w.transpose(0, 2, 3, 1)
+#         # 处理为二维矩阵
+#         con_w = con_w.reshape(con_w.shape[0], -1)
 
-        # qinc, qbias 当前不需要处理
-        qinc, qbias = self.qnn_read.read_qbarch_norm_act_param(w_bit, in_bit, out_bit, l_shift)
-
-        return con_w, qinc, qbias
+#         # qinc, qbias 当前不需要处理
+#         return con_w, self.inc, self.bias
     
-    def linear_process(self, w_bit, in_bit, out_bit, l_shift):
-        # linear_w0 是一个二维矩阵不需要处理
-        linear_w0 = self.qnn_read.read_qlinear_weight(w_bit)
-        linear_bn0_inc, linear_bn0_bias = self.qnn_read.read_qbarch_norm_act_param(w_bit, in_bit, out_bit, l_shift)
+#     def linear_process(self, w_bit, in_bit, out_bit, l_shift):
+#         # linear_w0 是一个二维矩阵不需要处理
+#         linear_w0 = self.qnn_read.read_qlinear_weight(w_bit)
+#         linear_bn0_inc, linear_bn0_bias = self.qnn_read.read_qbarch_norm_act_param(w_bit, in_bit, out_bit, l_shift)
 
-        return linear_w0, linear_bn0_inc, linear_bn0_bias
+#         return linear_w0, linear_bn0_inc, linear_bn0_bias
 
-    def last_linear_process(self, w_bit):
-        # 全连接层
-        linear_w0 = self.qnn_read.read_qlinear_weight(w_bit=2)
-        return linear_w0
+#     def last_linear_process(self, w_bit):
+#         # 全连接层
+#         linear_w0 = self.qnn_read.read_qlinear_weight(w_bit=2)
+#         return linear_w0
 
+# 处理一层参数
+# 这里的一层指的是 将conv 与 bn act 合并为一层
 # 将参数整理成满足 硬件设计需求的形式
-class QNNMemProcess:
-    def __init__(self, param_file_name):
-        self.param_process = ParamProcess(param_file_name)
-
+class QNNLayerMemProcess:
+    # 处理 中间层用
+    def __init__(self, name, reader, config, w_bit, in_bit, out_bit, l_shift, pe, simd):
+        
+        self.name = name
+        self.reader = reader
+        self.w_bit = w_bit
+        self.in_bit = in_bit
+        self.out_bit = out_bit
+        self.l_shift = l_shift
+        self.pe = pe
+        self.simd = simd
+        self.config = config[name]
+    
     # 将矩阵整理成所需要的储存样式
-    # 转化位 pe * titles 矩阵
-    def w_to_hls_array(self, w, w_bit, simd, pe):
-        assert w.shape[0] % pe == 0, 'out_ch mod pe must 0'
+    # 转化位 pe * tiles 矩阵
+    def w_to_hls_array(self, w):
+        assert w.shape[0] % self.pe == 0, 'out_ch mod pe must 0'
         # w 矩阵的宽 其值 为 k * k * in_ch
         h = w.shape[1]
         # res0 size = out_ch, k * k * in_ch // simd + (0 or 1)
-        res0 = [[0 for i in range(h // simd)] for j in range(w.shape[0])]
+        res0 = [[0 for i in range(h // self.simd)] for j in range(w.shape[0])]
         for out_ch in range(w.shape[0]):
-            for i in range(h // simd):
-                arr = w[out_ch][i*simd:(i+1)*simd]
-                res0[out_ch][i] = array_to_string(arr, w_bit)
+            for i in range(h // self.simd):
+                arr = w[out_ch][i*self.simd:(i+1)*self.simd]
+                res0[out_ch][i] = array_to_string(arr, self.w_bit)
             
         # 处理不够整除的部分
-        if h % simd != 0:
+        if h % self.simd != 0:
             print('h mod simd != 0')
             for out_ch in range(w.shape[0]):
-                arr = w[out_ch][h // simd * simd:]
-                res0[out_ch].append(array_to_string(arr, w_bit))
+                arr = w[out_ch][h // self.simd * self.simd:]
+                res0[out_ch].append(array_to_string(arr, self.w_bit))
 
         # print('res0 = ', len(res0), len(res0[0]))
         # print(np.array(res0))
         
-        tiles = len(res0[0]) * (len(res0) // pe) 
+        tiles = len(res0[0]) * (len(res0) // self.pe) 
+        self.w_tiles = tiles
         # print('tiles', tiles)
-        res = [[0 for i in range(tiles)] for i in range(pe)]
+        res = [[0 for i in range(tiles)] for i in range(self.pe)]
 
         tiles_cnt = 0
-        for i in range(len(res0) // pe):
+        for i in range(len(res0) // self.pe):
             for j in range(len(res0[0])):
 
-                for pe_cnt in range(pe):
-                    res[pe_cnt][tiles_cnt] = res0[i * pe + pe_cnt][j]
+                for pe_cnt in range(self.pe):
+                    res[pe_cnt][tiles_cnt] = res0[i * self.pe + pe_cnt][j]
                 tiles_cnt += 1  
         return res
 
     # 处理 inc 和 bias
-    def inc_bias_to_hls_array(self, inc, bias, pe):
-        inc = inc.reshape(pe, -1)
-        bias = bias.reshape(pe, -1)
+    def inc_bias_to_hls_array(self, inc, bias):
+        inc = inc.reshape(self.pe, -1)
+        bias = bias.reshape(self.pe, -1)
+        self.a_tiles = inc.shape[1]
         
         return inc, bias
     
     # 卷积参数整理
     # 返回的w因为元素可能大于64位 所以用list储存
     # inc, bias 是numpy.array类型
-    def conv(self, w_bit, in_bit, out_bit, l_shift, pe, simd):
+    def conv(self):
+        w = self.reader.read_qconv_weight(self.w_bit)
+        inc, bias = self.reader.read_qbarch_norm_act_param(w_bit=self.w_bit, in_bit=self.in_bit, out_bit=self.out_bit, l_shift=self.l_shift)
         # w 是二维矩阵形式
-        w, inc, bias = self.param_process.conv_process(w_bit, in_bit, out_bit, l_shift)
+        con_w = w.transpose(0, 2, 3, 1)
+        # 处理为二维矩阵
+        con_w = con_w.reshape(con_w.shape[0], -1)
         # print(w)
         # 先把 w 处理为每个元素位宽都是 simd * w_bit 形式
-        w = self.w_to_hls_array(w, w_bit, simd, pe)
+        con_w = self.w_to_hls_array(con_w)
 
-        inc, bias = self.inc_bias_to_hls_array(inc, bias, pe)
+        inc, bias = self.inc_bias_to_hls_array(inc, bias)
 
-        return w, inc, bias
+        self.hls_w = con_w
+        self.hls_inc = inc
+        self.hls_bias = bias
+
+        self.inc_bit_width = self.get_inc_bit_width(inc)
+        self.bias_bit_width = self.get_bias_bit_width(bias)
+        return con_w, inc, bias
 
 
 
-    def linear(self, w_bit, in_bit, out_bit, l_shift, pe, simd):
-        w, inc, bias = self.param_process.linear_process(w_bit, in_bit, out_bit, l_shift)
-        w = self.w_to_hls_array(w, w_bit, simd, pe)
-        inc, bias = self.inc_bias_to_hls_array(inc, bias, pe)
+    def linear(self):
+        w = self.reader.read_qlinear_weight(self.w_bit)
+        inc, bias = self.reader.read_qbarch_norm_act_param(w_bit=self.w_bit, in_bit=self.in_bit, out_bit=self.out_bit, l_shift=self.l_shift)
+        w = self.w_to_hls_array(w)
+        inc, bias = self.inc_bias_to_hls_array(inc, bias)
 
+        self.hls_w = w
+        self.hls_inc = inc
+        self.hls_bias = bias
+
+        self.inc_bit_width = self.get_inc_bit_width(inc)
+        self.bias_bit_width = self.get_bias_bit_width(bias)
         return w, inc, bias
     
 
     # 最后一个全连接层
     def last_linear(self, w_bit, pe, simd):
-        w = self.param_process.last_linear_process(w_bit)
-        w = self.w_to_hls_array(w, w_bit, simd, pe)
+        w = self.reader.read_qlinear_weight(self.w_bit)
+        w = self.w_to_hls_array(w)
+        self.hls_w = w
         return w
     
-    def w_to_hls_init_str(self, name, w, w_bit, pe, simd) -> str:
-        w_mem_type = "ap_uint<"+str(w_bit * simd)+">"
+    def w_to_hls_init_str(self, w) -> str:
+        w_mem_type = "ap_uint<"+str(self.w_bit * self.simd)+">"
 
-        res = '// ' + name + '\n'
-        res += "//PEs = %d, SIMD width = %d\n" % (pe, simd)
-        res += '//w_bit = %d\n' % w_bit
+        res = '// ' + self.name + '_w\n'
+        res += "//PEs = %d, SIMD width = %d\n" % (self.pe, self.simd)
+        res += '//w_bit = %d\n' % self.w_bit
         res += w_mem_type
-        res += (' ' + name) 
+        res += (' ' + self.name + '_w') 
         res += '[%d][%d] = {\n' % (len(w), len(w[0]))
 
         res += ",\n".join(map(lambda pe:"{"+(", ".join(map(hex, pe)))+"}", w))
@@ -163,16 +200,16 @@ class QNNMemProcess:
         bit_width = len(str(bin(abs_max))) - 2
         return bit_width + 1
     
-    def inc_to_hls_init_str(self, name, inc, pe, simd) -> str:
-        inc_bit_width = self.get_inc_bit_width(inc)
+    def inc_to_hls_init_str(self, inc) -> str:
+        inc_bit_width = self.inc_bit_width
 
         w_mem_type = "ap_uint<"+str(inc_bit_width)+">"
 
         res = '// inc\n'
-        res += '// ' + name + '\n'
-        res += '//w_bit = %d\n' % inc_bit_width
+        res += '// ' + self.name + '_inc\n'
+        res += '// w_bit = %d\n' % inc_bit_width
         res += w_mem_type
-        res += (' ' + name) 
+        res += (' ' + self.name + '_inc') 
         res += '[%d][%d] = {\n' % (len(inc), len(inc[0]))
 
         res += ",\n".join(map(lambda pe:"{"+(", ".join(map(hex, pe)))+"}", inc))
@@ -180,15 +217,15 @@ class QNNMemProcess:
 
         return res  
     
-    def bias_to_hls_init_str(self, name, bias, pe, simd) -> str:
-        bias_bit_width = self.get_bias_bit_width(bias)
+    def bias_to_hls_init_str(self, bias) -> str:
+        bias_bit_width = self.bias_bit_width
 
         w_mem_type = "ap_int<"+str(bias_bit_width)+">"
         res = '// bias\n'
-        res += '// ' + name + '\n'
-        res += '//w_bit = %d\n' % bias_bit_width
+        res += '// ' + self.name + '_bias\n'
+        res += '// w_bit = %d\n' % bias_bit_width
         res += w_mem_type
-        res += (' ' + name) 
+        res += (' ' + self.name + '_bias') 
         res += '[%d][%d] = {\n' % (len(bias), len(bias[0]))
 
         res += ",\n".join(map(lambda pe:"{"+(", ".join(map(hex, pe)))+"}", bias))
@@ -196,28 +233,105 @@ class QNNMemProcess:
 
         return res
 
+    def layer_param_to_init_str(self, w, inc, bias) -> str:
+        res = self.w_to_hls_init_str(w)
+        res += self.inc_to_hls_init_str(inc)
+        res += self.bias_to_hls_init_str(bias)
 
-    
-    
+        return res
 
+    def add_a_config_str(self, config_name, value) -> str:
+        res = '#define %s_%s %d \n' % (self.name.upper(), config_name.upper(), value)
+        return res
+
+    def conv_config_str(self) -> str:
+        res = '// ' + self.name + '\n'
+        res += self.add_a_config_str('K', self.config['k'])
+        res += self.add_a_config_str('S', self.config['s'])
+        res += self.add_a_config_str('P', self.config['p'])
+        res += self.add_a_config_str('IFM_CH', self.config['in_shape'][0])
+        res += self.add_a_config_str('IFM_ROW', self.config['in_shape'][1])
+        res += self.add_a_config_str('IFM_COL', self.config['in_shape'][2])
+
+        res += self.add_a_config_str('OFM_CH', self.config['out_shape'][0])
+        res += self.add_a_config_str('OFM_ROW', self.config['out_shape'][1])
+        res += self.add_a_config_str('OFM_COL)', self.config['out_shape'][2])
+
+        res += self.add_a_config_str('SIMD', self.simd)
+        res += self.add_a_config_str('PE', self.pe)
+
+        res += self.add_a_config_str('IN_BIT', self.in_bit)
+        res += self.add_a_config_str('OUT_BIT', self.out_bit)
+        res += self.add_a_config_str('W_BIT', self.w_bit)
+        res += self.add_a_config_str('INC_BIT', self.inc_bit_width)
+        res += self.add_a_config_str('BIAS_BIT', self.bias_bit_width)
+
+        res += self.add_a_config_str('W_TILES', self.w_tiles)
+        res += self.add_a_config_str('A_TILES', self.a_tiles)
+
+        res += '\n'
+
+        return res
+
+    def linear_config_str(self) -> str:
+        res = '// ' + self.name + '\n'
+
+        res += self.add_a_config_str('IN_LEN', self.config['in_len'])
+        res += self.add_a_config_str('OUT_LEN', self.config['out_len'])
+
+        res += self.add_a_config_str('SIMD', self.simd)
+        res += self.add_a_config_str('PE', self.pe)
+
+        res += self.add_a_config_str('IN_BIT', self.in_bit)
+        res += self.add_a_config_str('OUT_BIT', self.out_bit)
+        res += self.add_a_config_str('W_BIT', self.w_bit)
+        res += self.add_a_config_str('INC_BIT', self.inc_bit_width)
+        res += self.add_a_config_str('BIAS_BIT', self.bias_bit_width)
+
+        res += self.add_a_config_str('W_TILES', self.w_tiles)
+        res += self.add_a_config_str('A_TILES', self.a_tiles)
+
+        res += '\n'
+        return res
+
+    def last_linear_config_str(self) -> str:
+        res = '// ' + self.name + '\n'
+
+        res += self.add_a_config_str('IN_LEN', self.config['in_len'])
+        res += self.add_a_config_str('OUT_LEN', self.config['out_len'])
+
+        res += self.add_a_config_str('SIMD', self.simd)
+        res += self.add_a_config_str('PE', self.pe)
+
+        res += self.add_a_config_str('IN_BIT', self.in_bit)
+        res += self.add_a_config_str('OUT_BIT', self.out_bit)
+        res += self.add_a_config_str('W_BIT', self.w_bit)
+
+        return res
 
         
 
-
-
-
-
-
-
 if __name__ == "__main__":
-    qnn_men_pro = QNNMemProcess('miniConvNet.npz')
-    
-    w, inc, bias = qnn_men_pro.conv(2, 8, 4, l_shift=0, pe=4, simd=9)
-    w_str = qnn_men_pro.w_to_hls_init_str('conv_0_w', w, 2, 8, 9)
-    inc_str = qnn_men_pro.inc_to_hls_init_str('conv_inc_0', inc, 8, 9)
-    bias_str = qnn_men_pro.bias_to_hls_init_str('conv_bias_0', bias, 8, 9)
+    import json
+    config_file = open('config.json', 'r', encoding='utf-8')
+    config = json.load(config_file)
+    # qnn_men_pro = QNNMemProcess('miniConvNet.npz')
+    reader = QNNParamReader('miniConvNet.npz')
+    processer = QNNLayerMemProcess('conv_0', reader, config, w_bit=2, in_bit=8, out_bit=4, l_shift=0, pe=4, simd=9)
 
-    print(w_str + inc_str + bias_str)
+
+    w, inc, bias = processer.conv()
+    con_str = processer.conv_config_str()
+    print(con_str)
+    # # w_str = processer.w_to_hls_init_str(w)
+    # conv_str = processer.layer_param_to_init_str(w, inc, bias)
+    # print(conv_str)
+
+    # processer1 = QNNLayerMemProcess('conv_1', reader, w_bit=2, in_bit=4, out_bit=4, l_shift=0, pe=16, simd=32)
+    # w, inc, bias = processer1.conv()
+    # # w_str = processer.w_to_hls_init_str(w)
+    # conv_str = processer1.layer_param_to_init_str(w, inc, bias)
+    # print(conv_str)
 
     # print(inc)
 

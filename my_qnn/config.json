@@ -85,11 +85,11 @@
         "s": 1,
         "p": 1
     },
-    "linear0": {
+    "linear_0": {
         "in_len": 1568,
         "out_len": 20
     },
-    "linear1": {
+    "linear_1": {
         "in_len": 20,
         "out_len": 10
     }

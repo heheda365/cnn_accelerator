@@ -1,77 +1,73 @@
 #pragma once
-#include <ap_int.h>
 #include <hls_stream.h>
+#include <ap_int.h>
 using namespace hls;
+#include <iostream>
+using namespace std;
+#include <assert.h>
 
 
-template<int IN_CH, int IN_ROW, int IN_COL, int P>
-void padding(float in[IN_CH][IN_ROW][IN_COL], float out[IN_CH][IN_ROW + 2*P][IN_COL+2*P]) {
-    for(int ch=0; ch < IN_CH; ch ++) {
-        for(int row=0; row < P; row ++) {
-            for(int col=0; col < IN_COL + 2*P; col ++) {
-                out[ch][row][col] = 0;
-            }
-        }
-        for(int row=P; row < IN_ROW + P; row ++) {
-            for(int col = 0; col < P; col ++) {
-                out[ch][row][col] = 0;
-            }
-            for(int col=P; col < IN_COL + P; col ++) {
-                out[ch][row][col] = in[ch][row-P][col-P];
-            }
-            for(int col=IN_COL + P; col < IN_COL + 2*P; col ++) {
-                out[ch][row][col] = 0;
-            }
-        }
-        for(int row=IN_ROW + P; row < IN_ROW + 2*P; row ++) {
-            for(int col=0; col < IN_COL + 2*P; col ++) {
-                out[ch][row][col] = 0;
-            }
-        }
-    }
+#include "sliding_window_unit.h"
+#include "matrix_vector_unit.h"
+#include "function.h"
+#include "stream_tools.h"
+
+
+template <	unsigned K,
+			unsigned S,
+			unsigned Din,
+			unsigned Cin,
+			unsigned Cout,
+			unsigned Ibit,
+			unsigned Wbit,
+			unsigned Mbit,
+			unsigned Abit,
+			unsigned MVTU_InP,
+			unsigned MVTU_OutP,
+			unsigned ScaleBits,
+			unsigned FactorScaleBits>
+void CONV2D_ACT_NoP(
+	stream<ap_uint<Cin*Ibit> >& in, 
+	const ap_uint<MVTU_InP*Wbit> weights[MVTU_OutP][((Cin*K*K)/MVTU_InP)*(Cout/MVTU_OutP)], 
+	const ap_int<Mbit> factorA[MVTU_OutP][Cout/MVTU_OutP], 
+	const ap_int<Mbit> factorB[MVTU_OutP][Cout/MVTU_OutP], 
+	stream<ap_uint<Cout*Abit> >& out, 
+	const unsigned reps = 1)
+{
+#pragma HLS DATAFLOW
+
+	const unsigned Dout = Din/S + (Din%S > 0);
+	const unsigned IntermediateDout = S*(Dout-1) + K;
+#ifdef CONV2_DEBUG
+	cout << "Dout: " << Dout << endl;
+	cout << "IntermediateDout: " << IntermediateDout << endl;
+#endif
+	const unsigned TopLeftPad = (IntermediateDout - Din)/2;
+	const unsigned BottomRightPad = (IntermediateDout - Din) - TopLeftPad;
+#ifdef CONV2_DEBUG
+	cout << "TopLeftPad: " << TopLeftPad << endl;
+	cout << "BottomRightPad: " << BottomRightPad << endl;
+#endif
+
+	stream<ap_uint<Cin*Ibit> > samepad_out("samepad_out");
+	SAMEPAD<TopLeftPad, BottomRightPad, Din, Cin, Ibit>(in, samepad_out, reps);
+#ifdef CONV2_DEBUG
+	cout << "samepad_out.size(): " << samepad_out.size() << endl;
+#endif
+
+	stream<ap_uint<Cin*Ibit> > swu_out("swu_out");
+	SWU_NoP<K, S, IntermediateDout, Cin, Ibit> (samepad_out, swu_out, reps);
+
+	stream<ap_uint<MVTU_InP*Ibit> > swu_out_reduced("swu_out_reduced");
+	ReduceWidth<Cin*Ibit, MVTU_InP*Ibit, K*K*Dout*Dout> (swu_out, swu_out_reduced, reps);
+
+	stream<ap_uint<MVTU_OutP*Abit> > out_raw("out_raw");
+	MVAU_rowfirst<Dout*Dout, Ibit, Wbit, Mbit, Abit, Cin*K*K, Cout, MVTU_InP, MVTU_OutP, ScaleBits, FactorScaleBits>
+	(swu_out_reduced, weights, factorA, factorB, out_raw, reps);
+#ifdef CONV2_DEBUG
+	cout << "out_raw.size(): " << out_raw.size() << endl;
+#endif
+
+	ExpandWidth<MVTU_OutP*Abit, Cout*Abit, Dout*Dout>
+	(out_raw, out, reps);
 }
-
-/**
- *  不带padding的卷积计算
- * 
- */
-template<int IN_CH, int IN_ROW, int IN_COL, int OUT_CH, int OUT_ROW, int OUT_COL, int K, int S, int B>
-void conv2d_nop(float in[IN_CH][IN_ROW][IN_COL], float out[OUT_CH][OUT_ROW][OUT_COL], const float w[OUT_CH][IN_CH][K][K], const float b[OUT_CH]) {
-    // IN ROW
-    for(int in_row=0; in_row < IN_ROW - K + 1; in_row += S) {
-        // IN COL
-        for(int in_col=0; in_col < IN_COL - K + 1; in_col += S) {
-            // OUT CH
-            for(int out_ch=0; out_ch < OUT_CH; out_ch ++) {
-                // K ROW
-                for(int k_row=0; k_row < K; k_row ++) {
-                    // K COL
-                    for(int k_col=0; k_col < K; k_col ++) {
-                        // IN CH  K IN CH
-                        for(int in_ch=0; in_ch < IN_CH; in_ch ++){
-                            out[out_ch][in_row][in_col] += in[in_ch][in_row + k_row][in_col + k_col] * w[out_ch][in_ch][k_row][k_col]; 
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if(B != 0) {
-        for(int ch = 0; ch < OUT_CH; ch ++) {
-            for(int row = 0; row < OUT_ROW; row ++) {
-                for(int col = 0; col < OUT_COL; col ++) {
-                    out[ch][row][col] += b[ch];
-                }
-            }
-        }
-    }
-}
-
-template<int IN_CH, int IN_ROW, int IN_COL, int OUT_CH, int OUT_ROW, int OUT_COL, int K, int S, int P, int B>
-void conv2d(float in[IN_CH][IN_ROW][IN_COL], float out[OUT_CH][OUT_ROW][OUT_COL], const float w[OUT_CH][IN_CH][K][K], const float b[OUT_CH]){
-    float out_padding[IN_CH][IN_ROW + 2*P][IN_COL + 2*P];
-    padding<IN_CH, IN_ROW, IN_COL, P>(in, out_padding);
-    conv2d_nop<IN_CH, IN_ROW + 2*P, IN_COL + 2*P, OUT_CH, OUT_ROW, OUT_COL, K, S, B>(out_padding, out, w, b);
-}
-
-

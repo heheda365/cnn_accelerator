@@ -1,20 +1,16 @@
 {
     "configurations": [
         {
-            "name": "Win32",
+            "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "D:\\Xilinx\\Vivado\\2018.2\\include"
+                "/tools/Xilinx/Vivado/2018.3/include/"
             ],
-            "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
-            ],
-            "compilerPath": "D:\\Users\\KK\\mingw64\\mingw64\\bin\\gcc.exe",
+            "defines": [],
+            "compilerPath": "/usr/bin/g++",
             "cStandard": "c11",
             "cppStandard": "c++17",
-            "intelliSenseMode": "clang-x64"
+            "intelliSenseMode": "${default}"
         }
     ],
     "version": 4

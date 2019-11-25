@@ -5,7 +5,9 @@
 #include "functional.h"
 #include "config.h"
 #include "params.h"
-#include "loader.h"
+// #include "loader.h"
+#include <stdint.h>
+#include <cstdlib>
 
 void load_data(const char * path, char * ptr, unsigned int size) {
     std::ifstream f(path, std::ios::in | std::ios::binary);
@@ -62,6 +64,14 @@ int mnist_conv_net(int in[1][28][28]) {
                 conv_0_w,
                 (int *) NULL
             );
+
+    std::cout << "conv1 out \n";
+    for(int i=0; i < 28; i ++) {
+        for (int j=0; j < 28; j ++) {
+            std::cout << out0[2][i][j] << "  ";
+        }
+        std::cout << "\n";
+    }
 
     conv_bn_qrelu<
             COV_0_OUT_CH,
@@ -211,42 +221,63 @@ int main(int argc, char const *argv[])
     std::cout << "load params finish \n";
 
 
-    loader load = loader();
-    load.load_libsvm_data("../../../c/load_dataset/MNIST/mnist.t", 10000, 784, 10);
-    std::cout << "load test data finish \n";
 
-    int (* in)[1][28][28] = new int[10000][1][28][28];
-    int * y = new int[10000];
-    int cnt_x = 0;
 
-    for(int i=0; i<10000; i ++) {
-        for(int row=0; row < 28; row ++) {
-            for(int col=0; col < 28; col ++) {
-                in[i][0][row][col] = load.x[cnt_x ++];
-            }
-        }
-    }
-    int cnt_y = 0;
-    for(int i=0; i < 10000; i ++) {
-        int temp_y = 0;
-        for(int j=0; j < 10; j ++) {
-            if(load.y[cnt_y ++] > 0.5) {
-                temp_y = j;
-            }
-        }
-        y[i] = temp_y;
-    }
-    std::cout << "data preproccess finish\n";
+    // loader load = loader();
+    // load.load_libsvm_data("../../../c/load_dataset/MNIST/mnist.t", 10000, 784, 10);
+    // std::cout << "load test data finish \n";
 
-    int accu = 0;
-    for(int i=0; i < 10000; i ++) {
-        int predict_num = mnist_conv_net(in[i]);
-        if(predict_num == y[i]) {
-            accu ++;
+    // int (* in)[1][28][28] = new int[10000][1][28][28];
+    // int * y = new int[10000];
+    // int cnt_x = 0;
+
+    // for(int i=0; i<10000; i ++) {
+    //     for(int row=0; row < 28; row ++) {
+    //         for(int col=0; col < 28; col ++) {
+    //             in[i][0][row][col] = load.x[cnt_x ++];
+    //         }
+    //     }
+    // }
+    // int cnt_y = 0;
+    // for(int i=0; i < 10000; i ++) {
+    //     int temp_y = 0;
+    //     for(int j=0; j < 10; j ++) {
+    //         if(load.y[cnt_y ++] > 0.5) {
+    //             temp_y = j;
+    //         }
+    //     }
+    //     y[i] = temp_y;
+    // }
+    // std::cout << "data preproccess finish\n";
+
+    // int accu = 0;
+    // for(int i=0; i < 10000; i ++) {
+    //     int predict_num = mnist_conv_net(in[i]);
+    //     if(predict_num == y[i]) {
+    //         accu ++;
+    //     }
+    //     std::cout << "count : " << i << "  accuracy : " << accu << "\n";
+    // }
+    // std::cout << std::endl << "the accuracy is " << accu << std::endl;
+
+
+    float data_raw[28][28];
+    load_data("data/test_data.bin", (char *)data_raw, sizeof(data_raw));
+
+    // 输入数据c仿真时两种写法都可以
+    int data[1][28][28];
+    // hls::stream<ap_uint<8>> in_stream("in_stream");
+    for (int i = 0; i < 28; i++)
+    {
+        for (int j = 0; j < 28; j++)
+        {
+            data[0][i][j] = (int)(data_raw[i][j] * 255);
+            // in_stream.write(data[i][j]);
+            std::cout << (int)data[0][i][j] << "  ";
         }
-        std::cout << "count : " << i << "  accuracy : " << accu << "\n";
+        std::cout << "\n";
     }
-    std::cout << std::endl << "the accuracy is " << accu << std::endl;
+    mnist_conv_net(data);
 
     return 0;
 }

@@ -88,27 +88,37 @@ int main(int argc, char const *argv[])
     // // 将计算得到的结果 维度降低
     // hls::stream<ap_uint<L0_Mbit>> out("mvu out");
     hls::stream<ap_uint<32 * CONV_0_OFM_CH>>  conv_0_out("conv_0_out");
-    conv2d< CONV_0_K, 
-            CONV_0_S, 
-            CONV_0_P, 
-            CONV_0_IFM_ROW, 
-            CONV_0_IFM_COL, 
-            CONV_0_IFM_CH, 
-            CONV_0_IN_BIT, 
-            CONV_0_OFM_CH, 
-            CONV_0_W_BIT, 
-            32, 
-            CONV_0_SIMD, 
-            CONV_0_PE>(
-                in_stream, conv_0_w, 
-                conv_0_out
-            );
+    conv2d_bn_act<  CONV_0_K, 
+                    CONV_0_S, 
+                    CONV_0_P, 
+
+                    CONV_0_IFM_ROW, 
+                    CONV_0_IFM_COL, 
+                    CONV_0_IFM_CH, 
+                    CONV_0_IN_BIT, 
+
+                    CONV_0_OFM_CH, 
+                    CONV_0_OUT_BIT,
+
+                    CONV_0_W_BIT, 
+                    32, 
+                    CONV_0_INC_BIT,
+                    CONV_0_BIAS_BIT,
+
+                    CONV_0_SIMD, 
+                    CONV_0_PE>(
+                in_stream, 
+                conv_0_w, 
+                conv_0_inc,
+                conv_0_bias,
+                conv_0_out );
 
 
 
     hls::stream<ap_uint<32>> out("out");
     adjust_width<32 * 32, 32, 28 *28>(conv_0_out, out);
 
+    cout << "out \n";
     for(int i=0; i < 28;  i ++) {
         for(int j=0; j < 28; j ++) {
             for(int k=0; k < 32; k ++) {
@@ -120,9 +130,12 @@ int main(int argc, char const *argv[])
         }
         cout << "\n";
     }
-    // 输出正常
-    // mvu 计算正确
-    // 卷积层初步完成
+    
+    ap_uint<4> a = 10;
+    ap_uint<4> b = 10;
+    ap_uint<4> c = a + b;
+    cout << "c = " << c << "\n";
+    // 会直接溢出
 
 
 

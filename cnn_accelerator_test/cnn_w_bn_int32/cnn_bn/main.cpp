@@ -64,8 +64,7 @@ int mnist_conv_net(int in[1][28][28]) {
                 conv_0_w,
                 (int *) NULL
             );
-
-    std::cout << "conv1 out \n";
+    std::cout << "conv out \n";
     for(int i=0; i < 28; i ++) {
         for (int j=0; j < 28; j ++) {
             std::cout << out0[2][i][j] << "  ";
@@ -84,6 +83,15 @@ int mnist_conv_net(int in[1][28][28]) {
                 bn_0_w,
                 bn_0_b
             );
+
+    std::cout << "bn out \n";
+    for(int i=0; i < 28; i ++) {
+        for (int j=0; j < 28; j ++) {
+            std::cout << out0[2][i][j] << "  ";
+        }
+        std::cout << "\n";
+    }
+
     int pool0_out[POOL_0_IN_CH][POOL_0_IN_ROW/POOL_0_IN_PO][POOL_0_IN_COL/POOL_0_IN_PO] = {0};
     max_pool2d< 
             POOL_0_IN_CH,

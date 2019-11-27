@@ -115,8 +115,10 @@ class QNNLayerMemProcess:
 
     # 处理 inc 和 bias
     def inc_bias_to_hls_array(self, inc, bias):
-        inc = inc.reshape(self.pe, -1)
-        bias = bias.reshape(self.pe, -1)
+        inc = inc.reshape(-1, self.pe)
+        inc = inc.T
+        bias = bias.reshape(-1, self.pe)
+        bias = bias.T
         self.a_tiles = inc.shape[1]
         
         return inc, bias

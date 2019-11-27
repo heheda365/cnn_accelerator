@@ -134,9 +134,17 @@ int main(int argc, char const *argv[])
     ap_uint<4> a = 10;
     ap_uint<4> b = 10;
     ap_uint<4> c = a + b;
-    cout << "c = " << c << "\n";
-    // 会直接溢出
 
+    // for(int i=0; i < CONV_0_OFM_CH; i ++) {
+    //     cout << "inc" << 
+    // }
+
+    // cout << "c = " << c << "\n";
+    // // 会直接溢出
+    // for(int i=-200; i < 400; i ++) {
+    //     int o = bn_qurelu<32, CONV_0_OUT_BIT, CONV_0_INC_BIT, CONV_0_BIAS_BIT>(i, 2, -7);
+    //     cout << i << "\t" << o << "\n";
+    // }
 
 
 

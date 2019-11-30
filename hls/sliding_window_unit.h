@@ -128,3 +128,92 @@ void SWU(
 		}
 	}
 }
+
+template <	unsigned K,
+			unsigned S,
+			unsigned IN_ROW,
+			unsigned IN_COL,
+			unsigned IN_CH,
+			unsigned IN_BIT>
+void sliding_window_unit(
+	stream<ap_uint<IN_CH*IN_BIT> >& in, 
+	stream<ap_uint<IN_CH*IN_BIT> >& out, 
+	const unsigned reps = 1) 
+{
+	static_assert( (IN_ROW-K)%S == 0, "(IN_ROW-K) mod S is not 0");
+	static_assert( (IN_COL-K)%S == 0, "(IN_COL-K) mod S is not 0");
+	static_assert( K >= S, "K is not >= than S");
+
+	// 行方向上需要移动多少次 向下移动次数
+	const unsigned ROW_STEPS = (IN_ROW-K) / S + 1;
+	// 想右移动次数
+	const unsigned COL_STEPS = (IN_COL-K) / S + 1;
+
+	// TODO buf应该还可以优化
+	// 当图像尺寸不一致时 选用 row优先 or col优先应该对 这里的buff消耗有影响
+	// 构建一个循环列队
+	// 例如当 K = 3时 实际上不需要 完整的 3行来缓存 而是只需要 2 × IN_COL + 3就可以解除依赖
+	const unsigned BUF_SIZE = (K - 1) * IN_COL + K;
+	ap_uint<IN_CH*IN_BIT> line_buffer[BUF_SIZE];
+#pragma HLS RESOURCE variable line_buffer core=RAM_2P
+	unsigned buf_len = 0;
+	unsigned buf_pointer = 0;
+	ap_uint<IN_CH*IN_BIT> temp_in;
+
+	// 滑动计数
+	unsigned right_slid = 0;
+	unsigned down_slid = 0;
+	// 一共循环的次数
+	for(unsigned rep=0; rep < IN_ROW*IN_COL*reps; rep ++) {
+		// 写数据到 buf
+		// buf 不满的时候一直写数据
+		if(buf_len < BUF_SIZE) {
+			// TODO
+			temp_in = in.read();
+			line_buffer[buf_pointer++] = temp_in;
+			if(buf_pointer == BUF_SIZE) {
+				buf_pointer = 0;
+			}
+			buf_len ++;
+		}
+
+		// 缓冲区满 可以输出数据
+		if(buf_len == BUF_SIZE) {
+			// 输出窗口数据
+			// 缓冲区寻址 pointer 指向的是下一个位置
+			// 如果规定每来一个元素都是放在队头，当i=0时 pointer实际指向的元素是最后一个元素
+			// 而这个元素正是这里要最先输出的
+			for(unsigned i=0; i < K; i ++) {
+				for(unsigned j=0; j < K; j ++) {
+					// 寻址
+					unsigned temp_pointer = (buf_pointer + (i * IN_COL) + j);
+					// 这里temp_pointer 不可能大于 2 × BUF_SIZE
+					if(temp_pointer > BUF_SIZE) {
+						temp_pointer -= BUF_SIZE;
+					}
+					
+					ap_uint<IN_CH*IN_BIT> temp_out = line_buffer[temp_pointer];
+					out.write(temp_out);
+				}
+			}
+			// 输出后窗口向右滑动
+			// 滑到头了
+			if(++ right_slid == COL_STEPS) {
+				right_slid = 0;
+				// 右滑到头 下滑
+				if(++ down_slid == ROW_STEPS) {
+					down_slid = 0;
+					// 一帧数据完
+					buf_len = 0;
+				} else {
+					// 下滑没有到头
+					buf_len = buf_len - (S-1) * IN_COL - K;
+				}
+			} else {
+				// 右滑没到头
+				// S 个数据 出缓冲
+				buf_len -= S;
+			}
+		}
+	}
+}

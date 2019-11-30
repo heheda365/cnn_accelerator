@@ -64,13 +64,17 @@ int mnist_conv_net(int in[1][28][28]) {
                 conv_0_w,
                 (int *) NULL
             );
-    std::cout << "conv out \n";
-    for(int i=0; i < 28; i ++) {
-        for (int j=0; j < 28; j ++) {
-            std::cout << out0[2][i][j] << "  ";
-        }
-        std::cout << "\n";
-    }
+    // std::cout << "conv out \n";
+    // for(int i=0; i < 9; i ++) {
+    //     for (int j=0; j < 28; j ++) {
+    //         for(int k=0; k < 32; k ++) {
+    //             if(k == 1)
+    //                 std::cout << out0[k][i][j] << "  ";
+    //         }
+    //         // std::cout << "\n";
+    //     }
+    //     std::cout << "\n";
+    // }
 
     conv_bn_qrelu<
             COV_0_OUT_CH,
@@ -84,13 +88,6 @@ int mnist_conv_net(int in[1][28][28]) {
                 bn_0_b
             );
 
-    std::cout << "bn out \n";
-    for(int i=0; i < 28; i ++) {
-        for (int j=0; j < 28; j ++) {
-            std::cout << out0[2][i][j] << "  ";
-        }
-        std::cout << "\n";
-    }
 
     int pool0_out[POOL_0_IN_CH][POOL_0_IN_ROW/POOL_0_IN_PO][POOL_0_IN_COL/POOL_0_IN_PO] = {0};
     max_pool2d< 
@@ -99,6 +96,33 @@ int mnist_conv_net(int in[1][28][28]) {
             POOL_0_IN_COL, 
             POOL_0_IN_PO
             > (out0, pool0_out);
+    
+    // std::cout << "pool0 out \n";
+    // for(int i=0; i < 14; i ++) {
+    //     for (int j=0; j < 14; j ++) {
+    //         for(int k=0; k < 32; k ++) {
+    //             int d = pool0_out[k][i][j];
+    //             // if(k == 4)
+    //                 std::cout << d << "  ";
+
+    //         }
+    //         std::cout << "\n";
+    //     }
+    //     std::cout << "\n";
+    // }
+    // int padding_data[32][16][16];
+    // padding<32, 14, 14, 1>(pool0_out, padding_data);
+
+    // std::cout << "test conv1 data flow\n";
+    // for(int i=0; i < 3; i ++) {
+    //     for(int j=0; j < 3; j ++) {
+    //         for(int k=0; k < 32; k ++) {
+    //             int d = padding_data[k][i][j];
+    //             std::cout << d << "  ";
+    //         }
+    //         std::cout << "\n";
+    //     }
+    // }
     
     int out1[COV_1_OUT_CH][COV_1_OUT_ROW][COV_1_OUT_COL] = {0};
     conv2d<
@@ -117,6 +141,15 @@ int mnist_conv_net(int in[1][28][28]) {
                 conv_1_w,
                 (int *) NULL
             );
+    // std::cout << "conv1 out \n";
+    // for(int i=0; i < 14; i ++) {
+    //     for (int j=0; j < 14; j ++) {
+    //         for(int k=0; k < 32; k ++)
+    //             std::cout << out1[k][i][j] << "  ";
+    //         std::cout << "\n";
+    //     }
+    //     std::cout << "\n";
+    // }
 
     conv_bn_qrelu<
             COV_1_OUT_CH,
@@ -129,6 +162,20 @@ int mnist_conv_net(int in[1][28][28]) {
                 bn_1_w,
                 bn_1_b
             );
+    
+    // std::cout << "conv1_bn_qrelu out \n";
+    // for(int i=0; i < 14; i ++) {
+    //     for (int j=0; j < 14; j ++) {
+    //         for(int k=0; k < 32; k ++) {
+    //             // if(k == 1)
+    //             std::cout << out1[k][i][j] << "  ";
+    //         }
+    //         std::cout << "\n";
+    //     }
+    //     std::cout << "\n";
+    // }
+    
+    
     
     int out2[COV_2_OUT_CH][COV_2_OUT_ROW][COV_2_OUT_COL] = {0};
     conv2d<
@@ -147,6 +194,14 @@ int mnist_conv_net(int in[1][28][28]) {
                 conv_2_w,
                 (int *) NULL
             );
+    // std::cout << "conv2d out \n";
+    // for(int i=0; i < 14; i ++) {
+    //     for (int j=0; j < 14; j ++) {
+    //         std::cout << out2[15][i][j] << "  ";
+    //     }
+    //     std::cout << "\n";
+    // }
+
     conv_bn_qrelu<
             COV_2_OUT_CH,
             COV_2_OUT_ROW,
@@ -158,6 +213,17 @@ int mnist_conv_net(int in[1][28][28]) {
                 bn_2_w,
                 bn_2_b
             );
+
+    // std::cout << "conv2_bn_qrelu out \n";
+    // for(int i=0; i < 14; i ++) {
+    //     for (int j=0; j < 14; j ++) {
+    //         for(int k=0; k < 32; k ++)
+    //             std::cout << out2[k][i][j] << "  ";
+    //         std::cout << "\n";
+    //     }
+    //     std::cout << "\n";
+    // }
+
     int pool2_out[POOL_1_IN_CH][POOL_1_IN_ROW/POOL_1_IN_PO][POOL_1_IN_COL/POOL_1_IN_PO] = {0};
     max_pool2d<
                 POOL_1_IN_CH, 
@@ -196,6 +262,17 @@ int mnist_conv_net(int in[1][28][28]) {
                 bn_3_w,
                 bn_3_b
             );
+
+    std::cout << "conv3_bn_qrelu out \n";
+    for(int i=0; i < 7; i ++) {
+        for (int j=0; j < 7; j ++) {
+            for(int k=0; k < 32; k ++)
+                std::cout << out3[k][i][j] << "  ";
+            std::cout << "\n";
+        }
+        std::cout << "\n";
+    }
+
     int linear_in[LINEAR_0_IN_N] = {0};
     view<COV_3_OUT_CH, COV_3_OUT_ROW, COV_3_OUT_COL>(out3, linear_in);
 
@@ -286,6 +363,9 @@ int main(int argc, char const *argv[])
         std::cout << "\n";
     }
     mnist_conv_net(data);
+
+    int q = qrelu_search<4>(0, 47, 1);
+    std::cout << "q = " << q << "\n";
 
     return 0;
 }

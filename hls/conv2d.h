@@ -118,21 +118,38 @@ void conv2d(
 
 	stream<ap_uint<IN_CH*IN_BIT> > swu_out("swu_out");
 	SWU<K, S, INTER_ROW, INTER_COL, IN_CH, IN_BIT> (padding_out, swu_out, reps);
+	// sliding_window_unit<K, S, INTER_ROW, INTER_COL, IN_CH, IN_BIT>(padding_out, swu_out, reps);
 
-	stream<ap_uint<SIMD*IN_BIT> > adj_out("swu_out");
-	// ReduceWidth<IN_CH*Ibit, MVTU_InP*Ibit, K*K*Dout*Dout> (swu_out, swu_out_reduced, reps);
+	//////////////test/////////////////////
+	// stream<ap_uint<IN_BIT> > test_stream("test_stream");
+	// adjust_width<IN_CH*IN_BIT, IN_BIT, K*K*OUT_ROW*OUT_COL>(swu_out, test_stream);
+
+	// int test_res = 0;
+	// for(int i=0; i < 9 * 2; i ++) {
+		
+	// 		for(int k=0; k < 16; k ++) {
+	// 			ap_int<W_BIT> w = weights[0][i]((k+1)*2 -1, k*2);
+	// 			ap_uint<IN_BIT> d = test_stream.read();
+	// 			test_res += w * d;
+	// 			// cout << d << "  ";
+	// 		}
+	// 		cout << test_res << "  ";
+	// 		cout << "\n";
+	// }
+
+	// cout << "test_res = " << test_res;
+
+	// 数据正确
+	// 计算结果正确 应该 是矩阵向量乘单元存在问题
+	//////////////test ////////////////////
+
+
+	stream<ap_uint<SIMD*IN_BIT> > adj_out("adj_out");
 	adjust_width<IN_CH*IN_BIT, SIMD*IN_BIT, K*K*OUT_ROW*OUT_COL>(swu_out, adj_out);
 
 	stream<ap_uint<PE*M_BIT> > out_raw("out_raw");
-
-	// MVU<L0_Din * L0_Din, L0_Ibit, 2, L0_Mbit, L0_Cin * L0_K * L0_K, L0_Cout, 9, 4>(swu_out_expand, conv_0_w, out_raw);
-    // 
-    // cout << OUT_ROW*OUT_COL << " " << IN_BIT << " " << W_BIT << " " << M_BIT << " " << IN_CH*K*K << " " << OUT_COL << " " << SIMD << " " << PE << "\n";
-	// MVU<OUT_ROW*OUT_COL, IN_BIT, W_BIT, M_BIT, IN_CH*K*K, OUT_CH, SIMD, PE>(adj_out, weights, out_raw);
-
 	matrix_vector_unit<IN_CH*K*K, OUT_CH, IN_BIT, W_BIT, M_BIT, SIMD, PE, OUT_ROW*OUT_COL>(adj_out, weights, out_raw);
 
-    // cout << "out_raw.size = " << out_raw.size() << "  ";
 	adjust_width<PE*M_BIT, OUT_CH*M_BIT, OUT_ROW*OUT_COL*OUT_CH/PE>(out_raw, out);
 }
 
@@ -165,7 +182,7 @@ void conv2d_bn_act(
 	const ap_uint<SIMD*W_BIT> weights[PE][((IN_CH*K*K)/SIMD)*(OUT_CH/PE)],
 	const ap_uint<INC_BIT> inc[PE][OUT_CH/PE],
 	const ap_int<BIAS_BIT> bias[PE][OUT_CH/PE],
-	stream<ap_uint<OUT_CH*M_BIT> >& out, 
+	stream<ap_uint<OUT_CH*OUT_BIT> >& out, 
 	const unsigned reps = 1)
 {
 #pragma HLS DATAFLOW
@@ -195,10 +212,9 @@ void conv2d_bn_act(
 	adjust_width<IN_CH*IN_BIT, SIMD*IN_BIT, K*K*OUT_ROW*OUT_COL>(swu_out, adj_out);
 
 	// 矩阵向量计算
-	stream<ap_uint<PE*M_BIT> > out_raw("out_raw");
-	// matrix_vector_unit<IN_CH*K*K, OUT_CH, IN_BIT, W_BIT, M_BIT, SIMD, PE, OUT_ROW*OUT_COL>(adj_out, weights, out_raw);
-	matrix_vector_act_unit<IN_CH*K*K, OUT_CH, IN_BIT, OUT_BIT, W_BIT, M_BIT, IN_BIT, BIAS_BIT, SIMD, PE, OUT_ROW*OUT_COL>(adj_out, weights, inc, bias, out_raw);
+	stream<ap_uint<PE*OUT_BIT> > out_raw("out_raw");
+	matrix_vector_act_unit<IN_CH*K*K, OUT_CH, IN_BIT, OUT_BIT, W_BIT, M_BIT, INC_BIT, BIAS_BIT, SIMD, PE, OUT_ROW*OUT_COL>(adj_out, weights, inc, bias, out_raw);
 
     // // cout << "out_raw.size = " << out_raw.size() << "  ";
-	adjust_width<PE*M_BIT, OUT_CH*M_BIT, OUT_ROW*OUT_COL*OUT_CH/PE>(out_raw, out);
+	adjust_width<PE*OUT_BIT, OUT_CH*OUT_BIT, OUT_ROW*OUT_COL*OUT_CH/PE>(out_raw, out);
 }

@@ -70,7 +70,7 @@ ap_int<Mbit> DOT(
 		}
 		else {
 			ap_int<Wbit> temp_w = weights( (p+1)*Wbit-1, p*Wbit );
-			ap_int<Ibit+1> temp_in = in( (p+1)*Ibit-1, p*Ibit );
+			ap_uint<Ibit> temp_in = in( (p+1)*Ibit-1, p*Ibit );
 			result = temp_w*temp_in;
 		}
 
@@ -275,14 +275,14 @@ void matrix_vector_unit(
 	const unsigned OUTPUT_FOLD = MAT_COL/PE;
 
 	const unsigned total_reps = INPUT_FOLD * OUTPUT_FOLD * VECT_NUMS * reps;
-
+	// const unsigned total_reps = 18;
 	// 需要保存一行数据
 	ap_uint<SIMD*IN_BIT> row_store[INPUT_FOLD];
 #pragma HLS RESOURCE variable=row_store core=RAM_2P_BRAM
 
 	// 用来保存累加结果
-	ap_uint<M_BIT> result_vec[PE];
-#pragma HLS ARRAY_PARTITION variable=result_vec complete dim=0
+// 	ap_uint<M_BIT> result_vec[PE];
+// #pragma HLS ARRAY_PARTITION variable=result_vec complete dim=0
 	unsigned in_fold_cnt = 0;			// 输入折叠计数
 	unsigned out_fold_cnt = 0;			// 输出折叠计数
 	unsigned tile = 0;
@@ -290,7 +290,20 @@ void matrix_vector_unit(
 	// 一次 读入的数据 需要保存 in_ch * k * k长度的数据
 	ap_uint<SIMD*IN_BIT> temp_vec;
 	// 累加结果 这里需要初始化为0 
-	ap_int<M_BIT> acc[PE] = {0};
+
+	// TODO
+	ap_int<M_BIT> acc[PE];
+
+	// cout << "acc init value \n";
+	// for(unsigned i=0; i < PE; i ++) {
+	// 	cout << acc[i] << "  ";
+	// }
+	// static ap_uint<M_BIT> acc1[PE] = {0};
+
+	// cout << "acc1 init value \n";
+	// for(unsigned i=0; i < PE; i ++) {
+	// 	cout << acc1[i] << "  ";
+	// }
 
 	// total_reps = INPUT_FOLD * OUTPUT_FOLD * VECT_NUMS * reps;
 	for (unsigned rep = 0; rep < total_reps; rep++) {
@@ -308,13 +321,13 @@ void matrix_vector_unit(
 
 		// index = wVec*OutputFold+wMat;
 
-// 		// 初始化累加结果
-// 		if(in_fold_cnt == 0) {
-// 			for(int p=0; p < PE; p ++) {
-// #pragma HLS UNROLL
-// 				acc[p] = 0;
-// 			}
-// 		}
+		// 初始化累加结果
+		if(in_fold_cnt == 0) {
+			for(unsigned p=0; p < PE; p ++) {
+#pragma HLS UNROLL
+				acc[p] = 0;
+			}
+		}
 
 		// 主要计算单元 这里用UNROLL展开 期望用单周期实现计算
 		// PE 并行计算
@@ -323,7 +336,7 @@ void matrix_vector_unit(
 			// 读 W 子块
 			ap_uint<SIMD*W_BIT> temp_mat = weights[p][tile];
 			// SIMD 并行
-			acc[p] = DOT<W_BIT, IN_BIT, M_BIT, SIMD>( temp_mat, temp_vec );
+			acc[p] += DOT<W_BIT, IN_BIT, M_BIT, SIMD>( temp_mat, temp_vec );
 		}
 
 		// 计数逻辑 和输出处理
@@ -335,7 +348,7 @@ void matrix_vector_unit(
 			for(unsigned p=0; p < PE; p ++) {
 #pragma HLS UNROLL
 				out_buf((p+1)*M_BIT-1, p*M_BIT) = acc[p];
-				acc[p] = 0;
+				// acc[p] = 0;
 			}
 			out.write(out_buf);
 			// 完整的一次矩阵向量计算
@@ -373,7 +386,7 @@ void matrix_vector_act_unit(
 	const ap_uint<SIMD*W_BIT> weights[PE][(MAT_ROW/SIMD)*(MAT_COL/PE)], 
 	const ap_uint<INC_BIT> inc[PE][MAT_COL/PE],
 	const ap_int<BIAS_BIT> bias[PE][MAT_COL/PE],
-	stream<ap_uint<PE*M_BIT> >& out, 
+	stream<ap_uint<PE*OUT_BIT> >& out, 
 	const unsigned reps = 1) 
 {
 	static_assert( MAT_ROW%SIMD == 0, "MAT_ROW mod SIMD is not 0" );
@@ -383,14 +396,15 @@ void matrix_vector_act_unit(
 	const unsigned OUTPUT_FOLD = MAT_COL/PE;
 
 	const unsigned total_reps = INPUT_FOLD * OUTPUT_FOLD * VECT_NUMS * reps;
+	
 
 	// 需要保存一行数据
 	ap_uint<SIMD*IN_BIT> row_store[INPUT_FOLD];
 #pragma HLS RESOURCE variable=row_store core=RAM_2P_BRAM
 
 	// 用来保存累加结果
-	ap_uint<M_BIT> result_vec[PE];
-#pragma HLS ARRAY_PARTITION variable=result_vec complete dim=0
+	// ap_uint<M_BIT> result_vec[PE];
+// #pragma HLS ARRAY_PARTITION variable=result_vec complete dim=0
 	unsigned in_fold_cnt = 0;			// 输入折叠计数
 	unsigned out_fold_cnt = 0;			// 输出折叠计数
 	unsigned tile = 0;
@@ -398,7 +412,7 @@ void matrix_vector_act_unit(
 	// 一次 读入的数据 需要保存 in_ch * k * k长度的数据
 	ap_uint<SIMD*IN_BIT> temp_vec;
 	// 累加结果 这里需要初始化为0 
-	ap_int<M_BIT> acc[PE] = {0};
+	ap_int<M_BIT> acc[PE];
 
 	// total_reps = INPUT_FOLD * OUTPUT_FOLD * VECT_NUMS * reps;
 	for (unsigned rep = 0; rep < total_reps; rep++) {
@@ -416,13 +430,13 @@ void matrix_vector_act_unit(
 
 		// index = wVec*OutputFold+wMat;
 
-// 		// 初始化累加结果
-// 		if(in_fold_cnt == 0) {
-// 			for(int p=0; p < PE; p ++) {
-// #pragma HLS UNROLL
-// 				acc[p] = 0;
-// 			}
-// 		}
+		// 初始化累加结果
+		if(in_fold_cnt == 0) {
+			for(unsigned p=0; p < PE; p ++) {
+#pragma HLS UNROLL
+				acc[p] = 0;
+			}
+		}
 
 		// 主要计算单元 这里用UNROLL展开 期望用单周期实现计算
 		// PE 并行计算
@@ -431,7 +445,7 @@ void matrix_vector_act_unit(
 			// 读 W 子块
 			ap_uint<SIMD*W_BIT> temp_mat = weights[p][tile];
 			// SIMD 并行
-			acc[p] = DOT<W_BIT, IN_BIT, M_BIT, SIMD>( temp_mat, temp_vec );
+			acc[p] += DOT<W_BIT, IN_BIT, M_BIT, SIMD>( temp_mat, temp_vec );
 		}
 
 		// 计数逻辑 和输出处理
@@ -442,8 +456,9 @@ void matrix_vector_act_unit(
 			// PE 列计算完成 可以输出
 			for(unsigned p=0; p < PE; p ++) {
 #pragma HLS UNROLL
-				out_buf((p+1)*M_BIT-1, p*M_BIT) = bn_qurelu<M_BIT, OUT_BIT, IN_BIT, BIAS_BIT>(acc[p], inc[p][out_fold_cnt], bias[p][out_fold_cnt]);
-				acc[p] = 0;
+				out_buf((p+1)*OUT_BIT-1, p*OUT_BIT) = bn_qurelu<M_BIT, OUT_BIT, INC_BIT, BIAS_BIT>(acc[p], inc[p][out_fold_cnt], bias[p][out_fold_cnt]);
+				// cout << acc[p] << " " << out_buf((p+1)*OUT_BIT-1, p*OUT_BIT) << " " << inc[p][out_fold_cnt] << " " << bias[p][out_fold_cnt] << "     ";
+				// acc[p] = 0;
 			}
 			out.write(out_buf);
 			// 完整的一次矩阵向量计算

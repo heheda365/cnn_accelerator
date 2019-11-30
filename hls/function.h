@@ -61,6 +61,7 @@ void padding(
 /**
  * 实现量化激活算法
  * 使用二分查找
+ * TODO
  */
 template <	unsigned IN_BIT,
 			unsigned OUT_BIT,
@@ -72,13 +73,16 @@ ap_uint<OUT_BIT> bn_qurelu( ap_int<IN_BIT> in,
     ap_int<IN_BIT> target = in + bias;
     ap_uint<OUT_BIT> index = 1 << (OUT_BIT - 1);
 
-    ap_int<IN_BIT> mid = inc << (OUT_BIT - 1);
+	// 计算所使用的数据宽度 INC_BIT+OUT_BIT
+	ap_uint<INC_BIT+OUT_BIT> inc_exp = inc; 
+	// 直接对inc移位会溢出 所以初始化时需要 位宽扩展
+    ap_int<INC_BIT+OUT_BIT + 1> mid = inc_exp << (OUT_BIT - 1);
 
     for(int i=OUT_BIT-2; i >= 0; i --) {
         // TODO
         // 因为不能特别确定 IN_BIT 和 inc_BIT 关系 所以这里可能有精度损失
-        ap_int<IN_BIT> inc_shift = inc << i;
-        ap_int<IN_BIT> one_shift = 1 << i;
+        ap_uint<INC_BIT+OUT_BIT> inc_shift = inc_exp << i;
+        ap_uint<INC_BIT+OUT_BIT> one_shift = 1 << i;
         if(target < mid) {
             mid -= inc_shift;
             index -= one_shift; 
@@ -92,6 +96,7 @@ ap_uint<OUT_BIT> bn_qurelu( ap_int<IN_BIT> in,
     }
     return index;
 }
+
 
 /**
  * 批正则化 和 量化激活函数

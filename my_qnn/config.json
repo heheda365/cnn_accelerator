@@ -86,6 +86,11 @@
         "p": 1
     },
     "linear_0": {
+        "last_layer_shape": [
+            32,
+            7, 
+            7
+        ],
         "in_len": 1568,
         "out_len": 20
     },

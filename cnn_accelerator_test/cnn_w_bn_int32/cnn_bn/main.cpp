@@ -263,30 +263,44 @@ int mnist_conv_net(int in[1][28][28]) {
                 bn_3_b
             );
 
-    std::cout << "conv3_bn_qrelu out \n";
-    for(int i=0; i < 7; i ++) {
-        for (int j=0; j < 7; j ++) {
-            for(int k=0; k < 32; k ++)
-                std::cout << out3[k][i][j] << "  ";
-            std::cout << "\n";
-        }
-        std::cout << "\n";
-    }
+    // std::cout << "conv3_bn_qrelu out \n";
+    // for(int i=0; i < 7; i ++) {
+    //     for (int j=0; j < 7; j ++) {
+    //         for(int k=0; k < 32; k ++)
+    //             std::cout << out3[k][i][j] << "  ";
+    //         std::cout << "\n";
+    //     }
+    //     std::cout << "\n";
+    // }
 
     int linear_in[LINEAR_0_IN_N] = {0};
     view<COV_3_OUT_CH, COV_3_OUT_ROW, COV_3_OUT_COL>(out3, linear_in);
 
     int linear_0_out[LINEAR_0_OUT_N] = {0};
     linear<LINEAR_0_IN_N, LINEAR_0_OUT_N>(linear_in, linear_0_out, linear_0_w, (int *) NULL);
+    
+    // std::cout << "linear_0_out \n";
+    // for(int i=0; i < 20; i ++) {
+    //     std::cout << linear_0_out[i] << "  ";
+
+    // }
+
+
     linear_bn_qrelu<LINEAR_0_OUT_N, LINEAR_0_IN_BIT, LINEAR_0_A_BIT>(linear_0_out, linear_0_out, bn_4_w, bn_4_b);
 
     int linear_1_out[LINEAR_1_OUT_N] = {0};
     linear<LINEAR_1_IN_N, LINEAR_1_OUT_N>(linear_0_out, linear_1_out, linear_1_w, (int *) NULL);
 
+    std::cout << "linear_1_out \n";
+    for(int i=0; i < 10; i ++) {
+        std::cout << linear_1_out[i] << "  ";
+
+    }
+    std::cout << "\n";
+
 
     float res[LINEAR_1_OUT_N] = {0};
     log_softmax<LINEAR_1_OUT_N>(linear_1_out, res);
-
 
     int res_num = 0;
     float max = res[0];

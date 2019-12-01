@@ -64,7 +64,7 @@ def array_to_string(array, elem_bit):
 # 将参数整理成满足 硬件设计需求的形式
 class QNNLayerMemProcess:
     # 处理 中间层用
-    def __init__(self, name, reader, config, w_bit, in_bit, out_bit, l_shift, pe, simd):
+    def __init__(self, name, reader, config, w_bit, in_bit, out_bit, l_shift, pe, simd, conv_linear=False):
         
         self.name = name
         self.reader = reader
@@ -74,7 +74,8 @@ class QNNLayerMemProcess:
         self.l_shift = l_shift
         self.pe = pe
         self.simd = simd
-        self.config = config[name]
+        self.config = config[name] 
+        self.conv_linear = conv_linear
     
     # 将矩阵整理成所需要的储存样式
     # 转化位 pe * tiles 矩阵
@@ -148,10 +149,18 @@ class QNNLayerMemProcess:
         return con_w, inc, bias
 
 
-
     def linear(self):
         w = self.reader.read_qlinear_weight(self.w_bit)
         inc, bias = self.reader.read_qbarch_norm_act_param(w_bit=self.w_bit, in_bit=self.in_bit, out_bit=self.out_bit, l_shift=self.l_shift)
+
+        # w = self.
+        # m * n
+        # 如果上一层是卷积层 需要调整参数位置
+        if(self.conv_linear == True):
+            last_conv_shape = self.config["last_layer_shape"]
+            w = w.reshape(w.shape[0], last_conv_shape[0], last_conv_shape[1], last_conv_shape[2])
+            w = w.transpose(0, 2, 3, 1)
+            w = w.reshape(w.shape[0], -1)
         w = self.w_to_hls_array(w)
         inc, bias = self.inc_bias_to_hls_array(inc, bias)
 
@@ -165,7 +174,7 @@ class QNNLayerMemProcess:
     
 
     # 最后一个全连接层
-    def last_linear(self, w_bit, pe, simd):
+    def last_linear(self):
         w = self.reader.read_qlinear_weight(self.w_bit)
         w = self.w_to_hls_array(w)
         self.hls_w = w
@@ -241,6 +250,11 @@ class QNNLayerMemProcess:
         res += self.bias_to_hls_init_str(bias)
 
         return res
+    
+    def last_layer_param_to_init_str(self, w) -> str:
+        res = self.w_to_hls_init_str(w)
+       
+        return res
 
     def add_a_config_str(self, config_name, value) -> str:
         res = '#define %s_%s %d \n' % (self.name.upper(), config_name.upper(), value)
@@ -306,7 +320,7 @@ class QNNLayerMemProcess:
         res += self.add_a_config_str('PE', self.pe)
 
         res += self.add_a_config_str('IN_BIT', self.in_bit)
-        res += self.add_a_config_str('OUT_BIT', self.out_bit)
+        # res += self.add_a_config_str('OUT_BIT', self.out_bit)
         res += self.add_a_config_str('W_BIT', self.w_bit)
 
         return res

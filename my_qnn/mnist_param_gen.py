@@ -53,7 +53,7 @@ if __name__ == "__main__":
     hls_config_file.write(config_str)
 
     # linear_0
-    processer = QNNLayerMemProcess('linear_0', reader, config, w_bit=2, in_bit=4, out_bit=4, l_shift=0, pe=4, simd=16)
+    processer = QNNLayerMemProcess('linear_0', reader, config, w_bit=2, in_bit=4, out_bit=4, l_shift=0, pe=4, simd=16, conv_linear=True)
     w, inc, bias = processer.linear()
     param_str = processer.layer_param_to_init_str(w, inc, bias)
     config_str = processer.linear_config_str()
@@ -61,6 +61,13 @@ if __name__ == "__main__":
     hls_config_file.write(config_str)
 
     # linear_1  last linear
+    processer = QNNLayerMemProcess('linear_1', reader, config, w_bit=2, in_bit=4, out_bit=None, l_shift=None, pe=2, simd=2)
+    w  = processer.last_linear()
+    param_str = processer.last_layer_param_to_init_str(w)
+    config_str = processer.last_linear_config_str()
+    hls_param_file.write(param_str)
+    hls_config_file.write(config_str)
+
 
     hls_param_file.close()
     hls_config_file.close()

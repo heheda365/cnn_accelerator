@@ -14,7 +14,7 @@
 #include "conv2d.h"
 #include "pool2d.h"
 #include "bn_qrelu2d.h"
-
+#include "linear.h"
 
 void load_data(const char *path, char *ptr, unsigned int size)
 {
@@ -227,7 +227,7 @@ int main(int argc, char const *argv[])
                 conv_2_out );
     
     // 第二个 max_pool层
-    hls::stream<ap_uint<CONV_2_OUT_BIT*CONV_2_OFM_CH>> pool_1_out("pool_out");
+    hls::stream<ap_uint<CONV_2_OUT_BIT*CONV_2_OFM_CH>> pool_1_out("pool_1_out");
     max_pool2d< 2, 
                 2, 
                 CONV_2_OFM_ROW, 
@@ -267,26 +267,58 @@ int main(int argc, char const *argv[])
     
     // 四个卷积层测试全部通过
 
+    // 然后是全连接层
+    hls::stream<ap_uint<LINEAR_0_SIMD*LINEAR_0_IN_BIT>> linear_0_in("linear_0_in");
+    adjust_width<CONV_3_OUT_BIT*CONV_3_OFM_CH, LINEAR_0_SIMD*LINEAR_0_IN_BIT, CONV_3_OFM_ROW*CONV_3_OFM_COL>(conv_3_out, linear_0_in);
+    hls::stream<ap_uint<LINEAR_0_OUT_BIT*LINEAR_0_PE>> linear_0_out("linear_0_out");
+    linear_bn_act<  LINEAR_0_IN_LEN,
+                    LINEAR_0_OUT_LEN,
+                    LINEAR_0_IN_BIT,
+                    LINEAR_0_OUT_BIT,
+                    LINEAR_0_W_BIT,
+                    32,
+                    LINEAR_0_INC_BIT,
+                    LINEAR_0_BIAS_BIT,
+                    LINEAR_0_SIMD,
+                    LINEAR_0_PE> (
+                linear_0_in,
+                linear_0_w,
+                linear_0_inc,
+                linear_0_bias,
+                linear_0_out
+            );
+    // cout << linear_0_out.size() << "\n";
+    // 全连接层 0 测试通过 然后是最后一个卷积层
 
+    hls::stream<ap_uint<LINEAR_1_SIMD*LINEAR_1_IN_BIT>> linear_1_in("linear_1_in");
+    adjust_width<LINEAR_0_OUT_BIT*LINEAR_0_PE, LINEAR_1_SIMD*LINEAR_1_IN_BIT, LINEAR_0_OUT_LEN/LINEAR_0_PE>(linear_0_out, linear_1_in);
+    hls::stream<ap_uint<32*LINEAR_1_PE>> linear_1_out("linear_1_out");
+    linear       <  LINEAR_1_IN_LEN,
+                    LINEAR_1_OUT_LEN,
+                    LINEAR_1_IN_BIT,
+                    LINEAR_1_W_BIT,
+                    32,
+                    LINEAR_1_SIMD,
+                    LINEAR_1_PE> (
+                linear_1_in,
+                linear_1_w,
+                // linear_0_inc,
+                // linear_0_bias,
+                linear_1_out
+            );
 
-    hls::stream<ap_uint<4>> out("out");
-    adjust_width<32 * 4, 4, 7 *7>(conv_3_out, out);
+    hls::stream<ap_uint<32>> out("out");
+    adjust_width<32 * 2, 32, 5>(linear_1_out, out);
 
-    cout << "conv_2_out \n";
-    for(int i=0; i < 7;  i ++) {
-        for(int j=0; j < 7; j ++) {
-            for(int k=0; k < 32; k ++) {
-                ap_uint<4> out_num = out.read();
-                // if(k == 0) 
-                    cout << out_num << "  "; 
-            }
-            cout << "\n";
-
-        }
-        cout << "\n";
+    cout << "linear_1_out \n";
+    for(int i=0; i < 10;  i ++) {
+        ap_int<32> d = out.read();
+        cout << d << "  ";
     }
-    ap_uint<4> test_q = bn_qurelu<32, 4, CONV_1_INC_BIT, CONV_1_BIAS_BIT>(-8, 0x1c, 0x62);
-    cout << "test_q = " << test_q;
+    cout << "\n";
+    // cout << "\n";
+    // ap_uint<4> test_q = bn_qurelu<32, 4, CONV_1_INC_BIT, CONV_1_BIAS_BIT>(-8, 0x1c, 0x62);
+    // cout << "test_q = " << test_q;
 
     // test w
     // int res = 0;

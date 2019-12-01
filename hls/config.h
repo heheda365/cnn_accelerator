@@ -91,3 +91,11 @@
 #define LINEAR_0_W_TILES 490 
 #define LINEAR_0_A_TILES 5 
 
+// linear_1
+#define LINEAR_1_IN_LEN 20 
+#define LINEAR_1_OUT_LEN 10 
+#define LINEAR_1_SIMD 2 
+#define LINEAR_1_PE 2 
+#define LINEAR_1_IN_BIT 4 
+#define LINEAR_1_W_BIT 2 
+
